@@ -1,0 +1,733 @@
+
+"""
+IPTV Player
+"""
+
+import subprocess , requests , os 
+os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+
+
+import random , os , datetime, sys , logging , test , create_db as cdb
+from io import StringIO
+from kivymd.app import MDApp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.video import Video
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.recycleview import RecycleView
+from kivy.core.window import Window
+from kivy.logger import Logger
+from kivy.clock import Clock
+from kivy.metrics import dp
+from kivy.lang.builder import Builder
+from kivy.properties import ObjectProperty, StringProperty, NumericProperty , BooleanProperty
+from kivy.uix.screenmanager import ScreenManager, Screen
+# from kivy.core.video import video_ffpyplayer  as VideoFFPyplayer
+# VideoFFPyplayer.logger_level = 'debug'  # Enable FFmpeg debug logs
+
+INFO = """
+FloatLayout:
+    MDLabel:
+        id: info_chanel_no
+        on_parent:
+            app.widgets_to_hide["info_channel_no"] = self
+        text: str(app.chanel_no)
+        font_size: dp(40)  
+        size_hint: 0.2, 0.1
+        pos_hint: {'right': 0.3, 'center_y': 0.9}
+        color: 0.7, 1, 0, 0.7
+        # icon: "plus"
+        # opacity: 1 if app.channel_input else 0
+    
+    MDLabel:
+        id: info_time
+        on_parent:
+            app.widgets_to_hide["info_time"] = self
+        text: app.get_time()
+        halign: "center"
+        font_size: sp(17)  
+        bold: True
+        theme_text_color: "Custom"
+        text_color: 0.7, 0.5, 0, 1
+        size_hint: 0.2, 0.1
+        pos_hint: {'right': 0.9, 'center_y': 0.9}
+        md_bg_color: 0.7, 1, 0, 0.7
+        # icon: "plus"
+        # opacity: 1 if app.channel_input else 0
+    
+    MDIcon:
+        id: channel_favourite
+        on_parent:
+            app.widgets_to_hide["info_favourite"] = self
+        pos_hint: {'right': 0.9, 'center_y': 0.9}
+        icon: "heart" if app.is_channel_no_favourite else "heart-outline"
+        color: 0.7, 0.1, 0, 0.7
+
+
+    MDCard:
+        on_parent:
+            app.menu_mode_widgets.append(self)
+        size_hint: None, None
+        width: dp(400)
+        height: dp(600)
+        padding: dp(10)
+        pos_hint: {'top': 0.98, 'center_x': 0.3}
+        md_bg_color: 0.7, 1, 0, 0.7
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: dp(10)
+            MDBoxLayout:
+                orientation: "horizontal"
+                size_hint_y: None
+                height: dp(40)
+                spacing: dp(10)
+                radius: [dp(10), dp(10), dp(10), dp(10)]
+                md_bg_color: 0.7, 1, 0, 1
+                MDIcon:
+                    icon: "menu-left"
+                    font_size: dp(50)
+                    pos_hint: {'center_y': 0.5}
+                    disabled: True if app.current_gerne == 0 else False
+                MDLabel:
+                    id : gernes_label
+                    # on_parent:
+                    #     app.menu_mode_widgets.append(self)
+                    text: "gernes 🎭"
+                    halign: "right"
+                    # md_bg_color: 0.7, 1, 0, 1
+                    size_hint: 0.5 , None 
+                    height: dp(40)
+                MDIcon:
+                    id: gernes_label_icon
+                    icon: "car"
+                    pos_hint: {'center_y': 0.5}
+                MDLabel:
+                    text: ""
+                    size_hint_x: 0.3
+                MDIcon:
+                    icon: "menu-right"
+                    font_size: dp(50)
+                    disabled: True if app.current_gerne == app.total_gernes else False
+                    pos_hint: {'center_y': 0.5}
+
+            MDCard:
+                md_bg_color: 0.7, 1, 0.7, 0.7
+
+                CustomRecycleView:
+                    id: channels_rv
+                    group_id: 1
+                    on_parent: 
+                        self.init()
+                        setattr(app , 'menu_mode_scroll_to_channel', int(self.data[0]['channel_no']))
+                        app.menu_mode_widgets.append(self)
+                    effect_cls: "ScrollEffect"      # prevents overscrolling
+                    scroll_type: ['bars', 'content']
+                    bar_width: 10
+                    size_hint: 1 , None
+                    height: dp(500)
+                    # pos_hint: {'top': 0.9, 'center_x': 0.4}
+
+
+        
+<LabelChannel@BoxLayout>:
+    id : gernes
+    # on_parent: setattr(app,"gernes_box" , self)
+    channel_no: ''
+    icon: ''
+    channel_name: ''
+    selected: False
+    favourite: False
+    gerne : ''
+    orientation: 'horizontal'
+    spacing: dp(10)
+    padding: [dp(10) , dp(0), dp(10), dp(0)]
+    canvas.before:
+        Color:
+            rgba: (1, 0.7, 0.2, 0.4) if self.selected else (0.7, 1, 0.4, 0)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Label:
+        id: channel_no
+        text: str(root.channel_no)
+        font_size: dp(20)
+        size_hint: 0.1, None
+        height: dp(40)
+        color: 0.7, 1, 0, 0.7
+    AsyncImage:
+        id: channel_icon
+        source: root.icon 
+    Label:
+        text: root.channel_name
+    MDIcon:
+        icon: app.get_gerne_icon(root.gerne)  if root.gerne  else ""
+    MDIcon:
+        icon: "heart" if root.favourite else "heart-outline"
+        color: 0.7, 0, 0, 0.7
+
+<CustomRecycleView>:
+
+    viewclass: 'LabelChannel'
+    RecycleBoxLayout:
+        default_size: None, None
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: dp(10)
+        
+
+"""
+
+# channels_no = []
+# channels_icon = []
+# channels_name = []
+
+class CustomRecycleView(RecycleView):
+    group_id = NumericProperty(1)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def init(self, **kwargs):
+        # Get the channel data from the database
+        # get fav channels
+        favs = {}
+        [favs.update({channel: id}) for i , (id , channel) in enumerate(cdb.get_favourites()) if channel]        
+
+        self.data = [
+            {
+                "channel_no": str(no),
+                "icon": icon if not icon == None else "prev1.png",
+                "channel_name": name,
+                "selected": i == 0 , # Only the first is selected initially
+                "favourite": True if no in favs.keys() else False,
+                "gerne" : "",
+            }
+            for i, (no, domain, name, icon, url) in enumerate(cdb.get_channel_by_group(self.group_id)) if no
+        ] if self.group_id != 0 else [
+            {
+                "channel_no": str(no),
+                "icon": icon if not icon == None else "prev1.png",
+                "channel_name": name,
+                "selected": i == 0 , # Only the first is selected initially
+                "favourite": True if no in favs.keys() else False,
+                "gerne" : gerne,
+            }
+            for i, (no, domain, name, icon, gerne ,url) in enumerate(cdb.get_favourite_channels()) if no
+        ]
+
+
+    def jump_to_index(self, index):
+        self.scroll_y = 1 - (index / (len(self.data) - 1))  # index/number of widgets
+
+class IPTVApp(MDApp):
+
+    gernes = None
+    gernes_box = True
+    current_rv = None
+    total_gernes = NumericProperty(28)
+    current_gerne = NumericProperty(1)
+    current_index = NumericProperty(0)
+    # seamphore for inputs
+    seamphore_release = BooleanProperty(True)
+    # modes
+    menu_mode = BooleanProperty(False)
+    menu_mode_widgets = []
+    menu_mode_scroll_to_channel = NumericProperty(0)
+    max_chanel_no = (_:= cdb.get_channel_count() if not cdb.get_channel_count() else 11377)
+    chanel_no =10
+    is_channel_no_favourite = BooleanProperty(False)
+    widgets_to_hide = {         # storing widgets to hide later 
+
+    }
+    channel_info_label = None   # for displaying the channel number
+    channel_input = [           # storing keyboard input for channel number
+
+    ] # channel numbs
+    # known number keys which will be checked against the keycode
+    num_keys = {
+        48: 0,
+        49: 1,
+        50: 2,
+        51: 3,
+        52: 4,
+        53: 5,
+        54: 6,
+        55: 7,
+        56: 8,
+        57: 9,
+    }
+
+    # known gernes
+    known_gernes = {
+    gerne[0]: gerne[1] for gerne in [
+        (1, 'Undefined'), (2, 'Shop '), (3, 'General '), (4, 'Entertainment '), (5, 'Family'),
+        (6, 'Music'), (7, 'News'), (8, 'Religious'), (9, 'Animation'), (10, 'Kids'),
+        (11, 'Movies '), (12, 'Lifestyle'), (13, 'Series'), (14, 'Relax '), (15, 'Comedy'),
+        (16, 'Outdoor'), (17, 'Sports'), (18, 'Business'), (19, 'Documentary'), (20, 'Auto'),
+        (21, 'Classic '), (22, 'Education '), (23, 'Culture '), (24, 'Legislative '), (25, 'Weather'),
+        (26, 'Cooking'), (27, 'Travel'), (28, 'Science') 
+        ]
+    }
+    known_gernes
+    # known gernes icons
+    known_gernes_icons = {
+        1: "help-circle",
+        2: "src/icons/shop-48.png",
+        3: "src/icons/globe-94.png",
+        4: "src/icons/popcorn-48.png",
+        5: "home-heart",
+        6: "music",
+        7: "newspaper",
+        8: "hands-pray",
+        9: "filmstrip",
+        10: "puzzle",
+        11: "src/icons/movies-48.png",
+        12: "spa",
+        13: "layers",
+        14: "src/icons/spa-flower-48.png",
+        15: "src/icons/comedy-48.png",
+        16: "tree",
+        17: "trophy",
+        18: "briefcase",
+        19: "book",
+        20: "car",
+        21: "src/icons/classic-64.png",
+        22: "src/icons/student-male-48.png",
+        23: "src/icons/aztec-48.png",
+        24: "src/icons/scales-48.png",
+        25: "weather-partly-cloudy",
+        26: "chef-hat",
+        27: "airplane",
+        28: "flask",
+        0: "heart",  # Favourites
+    }
+    
+    # favourites
+    known_gernes[0] = "Favourites"
+
+    volume = 1.0        # default stream volume
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # bind keyboard
+        Window.bind(on_key_down=self.on_key_down)
+
+    def build(self):
+        self.m3u8_source = "https://linear-11.frequency.stream/dist/glewedtv/11/hls/master/playlist.m3u8"
+        self.video = Video(
+            source=self.m3u8_source, 
+            state='play',
+            allow_stretch=True, 
+            keep_ratio=False , 
+            eos=self.on_video_state_change , 
+            preview="prev1.png",
+            volume=self.volume, 
+        )
+        
+        layout = BoxLayout(orientation='vertical')
+        layout.add_widget(self.video)
+        
+        # btn_layout = BoxLayout(size_hint_y=0.2)
+        
+        
+        # stop_btn = Button(text="Stop")
+        # stop_btn.bind(on_press=self.stop_video)
+        box = BoxLayout(orientation='horizontal')
+        box.add_widget(TextInput(text=self.m3u8_source, multiline=False, size_hint_x=0.8))
+        box.add_widget(Button(text="Play", size_hint_x=0.2))
+        box.children[0].bind(on_press=self.jump_to_chanel)
+        
+        switch_btn = Button(text="Switch Stream")
+        switch_btn.bind(on_press=self.switch_stream)
+        
+        # add to hide dict
+        self.widgets_to_hide["switch_btn"] = switch_btn
+        self.widgets_to_hide["box"] = box
+
+        # btn_layout.add_widget(box)
+        # btn_layout.add_widget(switch_btn)
+        # fl = FloatLayout()
+        # info = Label(
+        #     text = int(''.join(map(str, self.channel_input))) if self.channel_input else "0",
+        #     size_hint=(0.2, 0.1), 
+        #     pos_hint={'x': 0.4, 'y': 0.9},
+        #     # opacity = 1 if self.channel_input else 0,
+        # )
+
+
+        # fl.add_widget(info)
+        # add to hide dict
+        self.info = Builder.load_string(INFO)
+        self.channel_info_label = self.info.ids.info_chanel_no
+        Clock.schedule_once(lambda dt : setattr(self,"gernes_box" , False) , 7)
+        # self.widgets_to_hide["info"] = info
+
+        # Log display label
+        # Log display label with better styling
+        self.log_label = Label(
+            size_hint_y=None,
+            height=200,
+            text_size=(None, None),
+            halign='left',
+            valign='top',
+            padding=(10, 10),
+            color=(0.7, 1, 0, 0.7),
+        )
+        scroll = ScrollView(size_hint=(0.9, 0.7), pos_hint={'center_x': 0.5, 'center_y': 0.5})
+        scroll.add_widget(self.log_label)
+
+        # add to hide dict
+        self.widgets_to_hide["scroll"] = scroll
+
+        # layout.add_widget(scroll)
+
+        # self.redirect_logs_to_label()  # Redirect logs to label
+        
+        # layout.add_widget(btn_layout)
+        # Enable DEBUG logging for ffpyplayer
+        # from kivy.core.video import video_ffpyplayer  as VideoFFPyplayer
+        # VideoFFPyplayer.logger_level = 'debug'  # Enable FFmpeg debug logs
+        os.environ['KIVY_LOG_LEVEL'] = 'debug'
+
+        # Redirect ALL logs (including Kivy's Logger) to your label
+        self.setup_logging()
+
+        sm = ScreenManager()
+        screen = Screen(name='main')
+        screen.add_widget(layout)
+        screen.add_widget(scroll)
+        screen.add_widget(self.info)
+        sm.add_widget(screen)
+
+        return sm
+    
+        # …existing code…
+    def on_key_down(self, window, keycode, scancode, codepoint, modifiers):
+            """
+            keycode is an integer, scancode unused here, codepoint is the actual character.
+            """
+            # spacebar → play/stop toggle
+            # if keycode == 32:  # space
+            #     for _ in self.widgets_to_hide.values():
+            #         if _.opacity == 0: _.opacity = 1
+            #         else: _.opacity = 0
+            if keycode == 105: ... # i
+            elif keycode == 27:  # esc
+                # clear thew channel typed no.
+                setattr(self,"channel_input" , []) if self.channel_input else print("channel input is empty" , self.channel_input , self.chanel_no)
+                # clear the channel info label 
+                self.channel_info_label.text = str(self.chanel_no)  
+                # hide all widgets
+                for widget in self.widgets_to_hide.values():
+                  if widget.opacity:
+                    setattr(widget,"opacity", 0)
+                  else: 
+                    setattr(widget,"opacity", 1) 
+
+            # digits 0-9 → jump to channel 
+            elif keycode in self.num_keys.keys():
+                print(self.num_keys[keycode])
+                self.channel_input.append(self.num_keys[keycode])
+                # update the channel_info no. label
+                self.channel_info_label.text = "".join(map(str , self.channel_input))
+                # opacity
+                for widget in self.widgets_to_hide.values():
+                  if not widget.opacity:
+                    setattr(widget,"opacity", 1)
+    
+            ### menu mode
+            elif keycode == 13:  # enter
+                if not self.menu_mode : 
+                    # change the channel
+                    if self.channel_input:
+                        _ = self.jump_to_chanel(int(''.join(map(str, self.channel_input))))
+                        # clear thew channel typed no.
+                        self.channel_input = []
+                        # update channel favourite label
+                        # update the channel info_favourite label
+                        self.is_channel_no_favourite = True if  self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else False
+                # menu mode ON
+                else: 
+                    # switch to channel
+                    self.jump_to_chanel(self.menu_mode_scroll_to_channel)
+                    print("menu mode channel no: ", self.menu_mode_scroll_to_channel)
+                    # update the channel info_favourite label
+                    self.is_channel_no_favourite = True if  self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else False
+
+            # volume controll up/down arrows ↑ ↓
+            elif keycode in (273, 274):  
+                if not self.menu_mode:
+                    if keycode == 273:  # up arrow ↑ 
+                        self.volume = min(self.volume + 0.1, 1.0)
+                        setattr(self.video, "volume" , self.volume)
+                    else: # down arrow ↓
+                        self.volume = max(self.volume - 0.1, 0.0)
+                        setattr(self.video, "volume" , self.volume)
+                # menu mode ON
+                else:
+                    if keycode == 273:  # up arrow ↑ 
+                        self.move_selection(-1)
+                    else: # down arrow ↓
+                        self.move_selection(1)
+
+            # change channel  back & forth ← →
+            elif keycode in (276, 275):
+                if not self.menu_mode:
+                    # left/right arrows → switch stream
+                    if keycode == 276: # left arrow ←
+                        self.chanel_no = max(self.chanel_no - 1, 0)
+                        self.jump_to_chanel(self.chanel_no)
+                        self.channel_info_label.text = str(self.chanel_no)
+                        # update time
+                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                        # check fav
+                        if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
+                            self.is_channel_no_favourite = True
+                        else: 
+                            self.is_channel_no_favourite = False
+                    else: # right arrow  →
+                        self.chanel_no = min(self.chanel_no + 1, self.max_chanel_no)
+                        self.jump_to_chanel(self.chanel_no)
+                        self.channel_info_label.text = str(self.chanel_no)
+                        # update time
+                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                        # check fav
+                        if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
+                            self.is_channel_no_favourite = True
+                        else:
+                            self.is_channel_no_favourite = False
+                # menu mode ON
+                else:
+                    if keycode == 276: # left arrow ←
+                        self.switch_gerne(0)
+                    else: # right arrow  →
+                        self.switch_gerne(1)
+            
+            # elif codepoint == "d":  # a
+            #     self.switch_gerne(1)
+            # elif codepoint == "a":
+            #     self.switch_gerne(0)
+            # elif codepoint == 'w':
+            #     self.move_selection(-1)
+            # elif codepoint == 's':
+            #     self.move_selection(1)
+            # menu mode
+            elif codepoint == 'm':
+                # toggle menu mode
+                self.menu_mode = not self.menu_mode
+                # enable/disable menu mode widgets
+                [setattr(widget,"opacity", 0 if not self.menu_mode else 1) for widget in self.menu_mode_widgets]
+                # hide other widgets
+                [setattr(widget,"opacity", 0) for widget in self.widgets_to_hide.values()]
+            # mark favourite ❤
+            elif codepoint == 'f':  
+                if self.seamphore_release:
+                    # lock the seamphore
+                    Clock.schedule_once(lambda dt: setattr(self,"seamphore_release" , False) , 0)
+                    # update the channel info_favourite label
+                    self.is_channel_no_favourite = True if not self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else False
+                    # get the channel by id
+                    self.mark_channel_favourite()
+                    # release the seamphore
+                    Clock.schedule_once(lambda dt: setattr(self,"seamphore_release" , True) , 0)
+
+
+            print( "keycode: ", keycode , type(keycode) , "scancode: ", scancode , "codepoint: ", codepoint , "modifiers: ", modifiers)
+            # left/right arrows → switch stream
+            # elif keycode == 276:  # left arrow
+            #     self.current_stream = (self.current_stream - 1) % len(self.streams)
+            #     self.play_stream()
+            # elif keycode == 275:  # right arrow
+            #     self.current_stream = (self.current_stream + 1) % len(self.streams)
+            #     self.play_stream()
+            return True
+    
+    def get_time(self): return datetime.datetime.now().strftime("%H:%M:%S")
+    def get_gerne_icon(self , g: str):
+        _ = [
+            key for i , (key , gerne) in enumerate(self.known_gernes.items()) if gerne.strip() == g
+        ]
+        print("gerne: ", g , "key: ", _)
+        return self.known_gernes_icons[_[0]] if _ else "help-circle"
+    
+    def switch_gerne(self , direction:int):
+        """
+        ``1`` for next gerne
+        ``0`` for previous gerne
+        """
+        # change gernes 
+        self.current_gerne  =  min(self.current_gerne + 1, self.total_gernes) if direction else max(self.current_gerne - 1, 0) # 0 - favourites ❤
+        # change gernes label gerne
+        self.info.ids.gernes_label.text = self.known_gernes[self.current_gerne]
+        # change gernes label icon
+        self.info.ids.gernes_label_icon.icon = self.known_gernes_icons[self.current_gerne]
+        # set the next group id
+        self.info.ids.channels_rv.group_id = self.current_gerne
+        self.info.ids.channels_rv.init()
+        # Set the first item["channel"] as menu_mode_scroll_to_channel
+        self.menu_mode_scroll_to_channel = int(self.info.ids.channels_rv.data[0]['channel_no']) if self.info.ids.channels_rv else 0
+
+    def mark_channel_favourite(self): 
+        if self.menu_mode:
+            rv = self.info.ids.channels_rv  # or wherever your RecycleView is
+            data = rv.data
+            for w in rv.children[0].children:
+                    if hasattr(w, 'channel_no') and w.channel_no == data[self.current_index]['channel_no']:
+                        rv.data[self.current_index]['favourite'] = not rv.data[self.current_index]['favourite']
+                        print("marking as favourite: ", w.channel_no)
+                        # add to db
+                        cdb.add_favourite(w.channel_no) if rv.data[self.current_index]['favourite'] else cdb.remove_favourite(w.channel_no)
+                        rv.refresh_from_data()
+                        break
+        else: 
+            cdb.add_favourite(self.chanel_no) if self.chanel_no not in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else cdb.remove_favourite(self.chanel_no)
+
+    def move_selection(self, direction):
+        rv = self.current_rv if self.current_rv else  self.info.ids.channels_rv  # or wherever your RecycleView is
+        data = rv.data
+        old_index = self.current_index
+        new_index = max(0, min(len(data) - 1, old_index + direction))
+        if old_index != new_index:
+            data[old_index]['selected'] = False
+            data[new_index]['selected'] = True
+            self.current_index = new_index
+            rv.refresh_from_data()
+            # rv.scroll_to(new_index)
+         # Scroll to the widget at new_index
+        # Wait for the next frame to ensure widgets are updated
+        def do_scroll(dt):
+            # Find the widget for new_index
+            for w in rv.children[0].children:
+                if hasattr(w, 'channel_no') and w.channel_no == data[new_index]['channel_no']:
+                    # set channel no to menu_mode_scroll_to_channel
+                    self.menu_mode_scroll_to_channel = int(w.channel_no)
+                    print("scrolling to: ", w.channel_no)
+                    # rv.scroll_y(w)
+                    rv.jump_to_index(new_index)
+                    break
+        # from kivy.clock import Clock
+        Clock.schedule_once(do_scroll, 0)
+
+    def setup_logging(self):
+        """Configure logging to capture FFmpeg output"""
+        Logger.handlers = []
+        
+        class LogHandler(logging.Handler):
+            def __init__(self, label):
+                super().__init__()
+                self.label = label
+                
+            def emit(self, record):
+                msg = self.format(record) + "\n"
+                Clock.schedule_once(lambda dt: self.update_label(msg))
+                
+            def update_label(self, message):
+                self.label.text += message
+                if len(self.label.text) > 2000:
+                    self.label.text = self.label.text[-1800:]
+                # with open("iptv.log", "a") as f:
+                #     f.write(message)
+        
+        handler = LogHandler(self.log_label)
+        handler.setLevel(logging.DEBUG)
+        Logger.addHandler(handler)
+        logging.root.addHandler(handler)
+        logging.root.setLevel(logging.DEBUG)
+
+    # class LogStream:
+    #     """Capture stdout/stderr and redirect to our label."""
+    #     def __init__(self, label, original):
+    #         self.label = label
+    #         self.original = original
+            
+    #     def write(self, text):
+    #         self.original.write(text)
+    #         if text.strip():
+    #             Clock.schedule_once(lambda dt: self.update_label(text))
+                
+    #     def update_label(self, text):
+    #         self.label.text += text
+    #         with open("iptv.log", "a") as f:
+    #             f.write(text)
+                
+    #     def flush(self):
+    #         self.original.flush()
+
+    def jump_to_chanel(self, channel_no:int):
+        # print(instance.parent.children[1].text)
+        if channel_no and type(channel_no) == int:
+            self.chanel_no = channel_no  # int(instance.parent.children[1].text) if instance.parent.children[1].text.isdigit() else 0
+            # get the channel by id 
+            _ = test.get_channel_by_id(self.chanel_no)[0]  # [(10656, 'KukhnyaTV.ru', 'Кухня ТВ HD', 'https://i.imgur.com/7jxZnuS.png', 'http://stream01.vnet.am/KukhnyaTv/mono.m3u8')]
+            # switch to the channel
+            if _:
+                self.video.state = 'stop'
+                def _set():
+                    self.video.source = _[-1]
+                    self.video.state = 'play'
+                    print('chanel no: ' ,_[0])
+                    print('chanel name: ' ,_[1])
+                    self.title = _[2]
+
+                Clock.schedule_once(lambda dt: _set(), 0.5)
+                print("Jump to channel:", self.chanel_no , _[-1])
+            # self.video.state = 'stop'
+
+
+        # print("Jump to channel:", self.chanel_no)
+
+    def stop_video(self, instance):
+        if self.video.state == 'play':
+            self.video.state = 'stop'
+        elif self.video.state == 'stop':
+            self.video.state = 'play'
+        
+    # def switch_stream(self, *args):
+    #     # Pick a random stream
+    #     self.current_stream = random.choice(self.streams)
+    #     self.video.state = 'stop'
+    #     self.video.source = self.current_stream[3]
+    #     self.video.state = 'play'
+    #     Logger.info(f"IPTV: Switching to channel {self.current_stream[1]} ({self.current_stream[3]})")
+    #     print("switch_stream")
+
+    def on_video_state_change(self, instance, value):
+        if value == 'play':
+            Logger.info(f"IPTV: Stream is playing: {self.current_stream[1]}")
+        elif value == 'stop':
+            Logger.info(f"IPTV: Stream stopped: {self.current_stream[1]}")
+        elif value == 'error':
+            Logger.error(f"IPTV: Stream failed: {self.current_stream[1]}")
+            self.switch_stream()  # Automatically switch to the next stream
+        else:
+            Logger.info(f"IPTV: Stream state changed: {value}")
+     
+    def switch_stream(self, instance): ...
+        # Change to a new m3u8 URL
+        # new_source = ""
+        # self.video.state = 'stop'
+        # self.video.source = new_source[-1]
+        # self.video.state = 'play'
+        # print('chanel no: ' ,new_source[0])
+        # print('chanel name: ' ,new_source[1])
+        # self.title = new_source[2]
+        # # set channel no.
+        # self.channel_info_label.text = f"Now watching {new_source[0]}: {new_source[1]}"
+
+        # # self.video.state = 'stop'
+        # # self.video.source = self.current_stream[3]
+        # # self.video.state = 'play'
+        # Logger.info(f"IPTV: Switching to channel {new_source[2]} ({new_source[0]})")
+        # # self.update_log("log update")
+        # print("switch_stream")
+        
+    
+if __name__ == '__main__':
+    IPTVApp().run()

@@ -1,0 +1,7 @@
+*.gif
+env/
+__pycache__/
+*.m3u8
+*.m3u
+*.log
+*.db

@@ -1,0 +1,53 @@
+# kv/menu.kv
+
+<Menu@Screen>:
+
+	FloatLayout:
+
+		MDCard:
+			size_hint: None, None
+			width: dp(400)
+			height: dp(600)
+			padding: dp(10)
+			pos_hint: {'top': 0.98, 'center_x': 0.3}
+			md_bg_color: 0.7, 1, 0, 0.7
+			MDBoxLayout:
+				orientation: "vertical"
+				spacing: dp(10)
+				MDBoxLayout:
+					orientation: "horizontal"
+					size_hint_y: None
+					height: dp(40)
+					spacing: dp(10)
+					radius: [dp(10), dp(10), dp(10), dp(10)]
+					md_bg_color: 0.7, 1, 0, 1
+					MDIcon:
+						icon: "arrow-left"
+						pos_hint: {'center_y': 0.5}
+						disabled: True
+					MDLabel:
+						id : gernes_label
+						# on_parent:
+						#     app.menu_mode_widgets.append(self)
+						text: "gernes"
+						halign: "right"
+						# md_bg_color: 0.7, 1, 0, 1
+						size_hint: 0.5 , None 
+						height: dp(40)
+					MDIcon:
+						icon: "car"
+						pos_hint: {'center_y': 0.5}
+					MDLabel:
+						text: ""
+						size_hint_x: 0.3
+					MDIcon:
+						icon: "arrow-right"
+						pos_hint: {'center_y': 0.5}
+
+				MDCard:
+					md_bg_color: 0.7, 1, 0.7, 0.7
+					MDLabel:
+						text: "Menu"
+						halign: "center"
+						# size_hint: 1, None
+						# height: dp(40)
