@@ -1,0 +1,41 @@
+# kv/info.kv
+
+<Info@Screen>:
+	name: "info"
+	FloatLayout:
+		MDCard:
+			size_hint: None, None
+			height: dp(200)
+			width: dp(700)
+			padding: dp(10)
+			pos_hint: {'top': 0.5, 'center_x': 0.5}
+			md_bg_color: 0.7, 1, 0, 0.7
+			MDBoxLayout:
+				orientation: "vertical"
+				spacing: dp(10)
+				MDBoxLayout:
+					orientation: "horizontal"
+					size_hint_y: None
+					height: dp(40)
+					spacing: dp(10)
+					radius: [dp(10), dp(10), dp(10), dp(10)]
+					md_bg_color: 0.7, 1, 0, 1
+					MDIcon:
+						icon: "arrow-left"
+						pos_hint: {'center_y': 0.5}
+						disabled: True
+					MDLabel:
+						id : gernes_label
+						text: "gernes"
+						halign: "right"
+						size_hint: 0.5 , None 
+						height: dp(40)
+					MDIcon:
+						icon: "car"
+						pos_hint: {'center_y': 0.5}
+					MDLabel:
+						text: ""
+						size_hint_x: 0.3
+					MDIcon:
+						icon: "arrow-right"
+						pos_hint: {'center_y': 0.5}
