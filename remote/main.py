@@ -8,6 +8,7 @@ from kivy.uix.label import Label
 from kivymd.toast import toast
 from kivymd.app import MDApp
 import socket,os,threading
+import time
 
 class RemoteButton(MDRectangleFlatButton):
     pass
@@ -56,12 +57,21 @@ Screen:
             icon: "check"
             pos_hint: {"center_x": 0.8, "center_y": 0.1}
             on_release: app.connect(ip_address.text)
+    
+        MDSpinner:
+            id: spinner
+            size_hint: None, None
+            size: dp(30), dp(30)
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            active: app.is_trying_to_connect
+            color: app.theme_cls.primary_color
 """
 
 class RemoteAPP(MDApp):
     ir_glow = BooleanProperty(False)
     # socket backend
     client_socket = None
+    is_trying_to_connect = BooleanProperty(False)
     is_connected = BooleanProperty(False)
     tv_name = StringProperty("TV : ON")
 
@@ -76,30 +86,55 @@ class RemoteAPP(MDApp):
         sm.add_widget(Builder.load_file("kv/remote.kv"))
         # set current screen
         sm.current = "main"
+        # bind is_connected to the sm
+        self.bind(is_connected=lambda instance, value: self.switch_screen("remote" if value else "main"))
         return sm
+
+    def switch_screen(self , screen:str):
+        # hault the spinner
+        self.is_trying_to_connect = False
+        # switch screen
+        if screen == "main":
+            Clock.schedule_once(lambda dt: setattr(self.root, "current" , "main"), 0.5)
+        elif screen == "remote":
+            Clock.schedule_once(lambda dt: setattr(self.root, "current" , "remote"), 0.5)
+        else:
+            print("Invalid screen name")
+            return
+    
+    @mainthread
+    def show_toast(self , message:str):
+        '''
+        ``connected`` : connected to the tv
+        ``disconnected`` : disconnected from the tv
+        ``error`` : error connecting to the tv
+        '''
+        # show toast message
+        if message == "connected":
+            Clock.schedule_once(lambda dt: toast("Connected to TV"), 0.5)
+        elif message == "disconnected":
+            Clock.schedule_once(lambda dt: toast("Disconnected from TV"), 0.5)
+        elif message == "wrong_ip":
+            Clock.schedule_once(lambda dt: toast("Wrong ip address entered"), 0.5)
+        elif message == "tv_down":
+            Clock.schedule_once(lambda dt: toast("TV is off"), 0.5)
+        
 
     def on_start(self): 
          # init the socket connection
         ...
 
     def connect(self , ip:str):
-        def socket_connect(client_ , address):
-            soc = socket.socket()
-            soc.connect(address)
-            print(f"Connected to {address}")
-            client_ = soc
         # connect to the socket server
         try:
             _=threading.Thread(target=socket_server , args=((ip, 9090),), daemon=True)
             _.start()
-            # _.join()
         except socket.error as e:
-            print(f"Error connecting to server: {e}")
-            Clock.schedule_once(lambda dt: toast("Error connecting to server"), 0.5)
+            # print(f"Error connecting to server: {e}")
+            # Clock.schedule_once(lambda dt: toast("Error connecting to server"), 0.5)
             return
-        finally:
-            # self.is_connected = True
-            # get the tv name
+        
+        if self.is_connected:
             try:
                 self.client_socket.sendall("tv_name".encode())
                 tv_name = self.client_socket.recv(1024).decode()
@@ -110,8 +145,6 @@ class RemoteAPP(MDApp):
                 Clock.schedule_once(lambda dt: toast("Error getting TV name"), 0.5)
                 
             self.tv_name = f"TV : {ip}"
-            # switch to remote screen
-            self.root.current = "remote"
 
     def switch_to_main(self):
         # switch to main screen
@@ -129,7 +162,7 @@ class RemoteAPP(MDApp):
                 Clock.schedule_once(lambda dt: toast("Error sending data\nreconnect your device"), 0.5)
                 self.is_connected = False
                 self.tv_name = "TV : OFF"
-                self.switch_to_main()
+                # self.switch_to_main()
         else:
             print("Not connected to server")
 
@@ -137,6 +170,7 @@ app_ = RemoteAPP()
 
 # socket server
 def socket_server(address:tuple):
+    app_.is_trying_to_connect = True
     # start the socket server
     try:
         s = socket.socket()
@@ -144,20 +178,35 @@ def socket_server(address:tuple):
         # if connection sucessful add to app_ client
         app_.client_socket = s
         app_.is_connected = True
+        # give time to recognize the connection
+        time.sleep(0.5)
+        app_.is_trying_to_connect = False
+        # send toast
+        app_.show_toast("connected")
 
     except socket.error as e:
-        print(f"Error connecting to server: {e}")
+        if e.errno == 113:
+            print(f"Error connecting to server: {e}")
+            app_.show_toast("wrong_ip")
+        elif e.errno == 111:
+            print(f"Error connecting to server: {e}")
+            app_.show_toast("tv_down")
+        # set connection tries to false
+        app_.is_trying_to_connect = False
+
         return
     
+    try:
+        while app_.is_connected:
+            _ = s.recv(1024).decode()
+            print(f"Received: {_.strip()}") if _ else setattr(app_,"is_connected" , False)
+    except Exception as e:
+        print(f"Error receiving data: {e}")
+        app_.is_connected = False
+        app_.tv_name = "TV : OFF"
+        # app_.switch_to_main()
     finally:
-        try:
-            while app_.is_connected:
-                _ = s.recv(1024).decode()
-                print(f"Received: {_.strip()}")
-        except Exception as e:
-            print(f"Error receiving data: {e}")
-            app_.is_connected = False
-            app_.tv_name = "TV : OFF"
-            app_.switch_to_main()
+        # show toast
+        app_.show_toast("disconnected")
 
 app_.run()

@@ -1,43 +1,46 @@
-
-
 import re
 from urllib.parse import unquote
 
 def parse_m3u(file_path):
     channels = []
     current_channel = None
-    
-    with open(file_path, 'r') as f:
+    current_options = []
+    with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
+            if not line or line.startswith('#EXTM3U'):
+                continue
             if line.startswith('#EXTINF'):
                 # Parse metadata
-                match = re.match(r'#EXTINF:-1\s+(.*?),(.*)', line)
+                match = re.match(r'#EXTINF:-?\d+\s*(.*?),(.*)', line)
                 if match:
                     attrs = match.group(1)
                     name = unquote(match.group(2)).strip()
-                    
-                    # Extract attributes
                     tvg_id = re.search(r'tvg-id="([^"]+)"', attrs)
                     logo = re.search(r'tvg-logo="([^"]+)"', attrs)
                     groups = re.search(r'group-title="([^"]+)"', attrs)
-                    
                     current_channel = {
                         'tvg_id': tvg_id.group(1) if tvg_id else None,
                         'name': name,
                         'logo': unquote(logo.group(1)) if logo else None,
                         'groups': [g.strip() for g in groups.group(1).split(';')] if groups else [],
-                        'url': None
+                        'url': None,
+                        'options': []
                     }
+            elif line.startswith('#EXTVLCOPT:'):
+                option = line[len('#EXTVLCOPT:'):].strip()
+                current_options.append(option)
             elif line and not line.startswith('#'):
                 if current_channel:
-                    current_channel['url'] = unquote(line.strip())
+                    current_channel['url'] = unquote(line)
+                    current_channel['options'] = current_options.copy()
                     channels.append(current_channel)
                     current_channel = None
+                    current_options.clear()
     return channels
 
 
-# print(parse_m3u('kids.m3u'))
+# print(parsed_m3u:=parse_m3u('test.m3u8'))
 
 # import requests , json, os, create_db as m3udb
 
@@ -107,56 +110,56 @@ def get_channel_by_id(id:int , conn=None) -> list:
 # conn.close()
 
 
-from kivy.app import App
-from kivy.lang import Builder
-from kivy.properties import ListProperty
-from kivy.uix.recycleview import RecycleView
+# from kivy.app import App
+# from kivy.lang import Builder
+# from kivy.properties import ListProperty
+# from kivy.uix.recycleview import RecycleView
 
-kv = '''
-BoxLayout:
-    orientation: 'vertical'
-    BoxLayout:
-        size_hint_y: None
-        height: 48
-        TextInput:
-            id: ti
-            hint_text: 'Enter Index'
-            input_filter: 'int'
-            on_text_validate: rv.jump_to_index(int(self.text))
-            multiline: False
-        Button:
-            text: 'Jump to Index'
-            on_release: rv.jump_to_index(int(ti.text))
-    RV:                          
-        id: rv
-        viewclass: 'Button'  
-        data: self.rv_data_list  
-        scroll_type: ['bars', 'content']
-        bar_width: 10
-        RecycleBoxLayout:
-            default_size: None, dp(48)   
-            default_size_hint: 1, None
-            size_hint_y: None
-            height: self.minimum_height   
-            orientation: 'vertical'
-'''
-
-
-class RV(RecycleView):
-    rv_data_list = ListProperty()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.rv_data_list = [{'text': f'Button {i}'} for i in range(100)]
-
-    def jump_to_index(self, index):
-        self.scroll_y = 1 - (index / (len(self.rv_data_list) - 1))  # index/number of widgets
+# kv = '''
+# BoxLayout:
+#     orientation: 'vertical'
+#     BoxLayout:
+#         size_hint_y: None
+#         height: 48
+#         TextInput:
+#             id: ti
+#             hint_text: 'Enter Index'
+#             input_filter: 'int'
+#             on_text_validate: rv.jump_to_index(int(self.text))
+#             multiline: False
+#         Button:
+#             text: 'Jump to Index'
+#             on_release: rv.jump_to_index(int(ti.text))
+#     RV:                          
+#         id: rv
+#         viewclass: 'Button'  
+#         data: self.rv_data_list  
+#         scroll_type: ['bars', 'content']
+#         bar_width: 10
+#         RecycleBoxLayout:
+#             default_size: None, dp(48)   
+#             default_size_hint: 1, None
+#             size_hint_y: None
+#             height: self.minimum_height   
+#             orientation: 'vertical'
+# '''
 
 
-class RvJumpToApp(App):
+# class RV(RecycleView):
+#     rv_data_list = ListProperty()
 
-    def build(self):
-        return Builder.load_string(kv)
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.rv_data_list = [{'text': f'Button {i}'} for i in range(100)]
+
+#     def jump_to_index(self, index):
+#         self.scroll_y = 1 - (index / (len(self.rv_data_list) - 1))  # index/number of widgets
+
+
+# class RvJumpToApp(App):
+
+#     def build(self):
+#         return Builder.load_string(kv)
 
 
 # RvJumpToApp().run()

@@ -1,14 +1,9 @@
-import sqlite3 , configparser
+import sqlite3
 
-# app .conf
-config = configparser.ConfigParser()
-config.read('app.conf')
-
-# db_path = config['database']['path']
-DB = config['app']['channels_db_path']
+DB = 'iptv_channels.db'
 
 def create_tables():
-    conn = sqlite3.connect(DB)
+    conn = sqlite3.connect('test_db.db')
     c = conn.cursor()
     
     # Channels table
@@ -25,13 +20,11 @@ def create_tables():
                   name TEXT UNIQUE)''')
     
     # Channel-Group relationship table
-    c.execute('''CREATE TABLE IF NOT EXISTS channel_groups (
-		channel_id INTEGER,
-		group_id INTEGER,
-		UNIQUE(channel_id, group_id),
-		FOREIGN KEY(channel_id) REFERENCES channels(id),
-		FOREIGN KEY(group_id) REFERENCES groups(id))''')
-
+    c.execute('''CREATE TABLE IF NOT EXISTS channel_groups
+                 (channel_id INTEGER,
+                  group_id INTEGER,
+                  FOREIGN KEY(channel_id) REFERENCES channels(id),
+                  FOREIGN KEY(group_id) REFERENCES groups(id))''')
 	# create favourites table
     c.execute('''CREATE TABLE IF NOT EXISTS favourites
 				 (id INTEGER PRIMARY KEY,
@@ -52,7 +45,7 @@ def insert_channels(channels:list) -> int:
 	"""
 	capable of ``inserting`` and ``updating`` channels | detects channels automatically if they exist or new
 	"""
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('test_db.db')
 	c = conn.cursor()
 	
 	for channel in channels:
@@ -82,22 +75,11 @@ def insert_channels(channels:list) -> int:
 			# Insert groups
 			for group_name in channel['groups']:
 				# Insert group if not exists
-				# List of allowed group names
-				allowed_groups = [
-					'Undefined', 'Shop ', 'General ', 'Entertainment ', 'Family',
-					'Music', 'News', 'Religious', 'Animation', 'Kids',
-					'Movies ', 'Lifestyle', 'Series', 'Relax ', 'Comedy',
-					'Outdoor', 'Sports', 'Business', 'Documentary', 'Auto',
-					'Classic ', 'Education ', 'Culture ', 'Legislative ', 'Weather',
-					'Cooking', 'Travel', 'Science'
-				]
-				# Use group_name if in allowed list, else 'Undefined'
-				final_group = group_name if group_name in allowed_groups else 'Undefined'
 				c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
-						(final_group,))
+						(group_name,))
 				
 				# Get group ID
-				c.execute('SELECT id FROM groups WHERE name = ?', (final_group,))
+				c.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
 				group_id = c.fetchone()[0]
 				
 				# Create relationship
@@ -108,39 +90,23 @@ def insert_channels(channels:list) -> int:
 			for option in channel['options']:
 				c.execute('INSERT OR IGNORE INTO options (channel_id, option) VALUES (?, ?)',
 		(channel_id, option))
-		
-		# If channel exists, update it | UPDATE
+		# If channel exists, update it
 		else:
-			try:
-				# Update channel if needed
-				c.execute('''UPDATE channels
-							SET tvg_id = ?, name = ?, logo_url = ?, stream_url = ?
-							WHERE id = ?''',
-							(channel['tvg_id'], channel['name'], 
-							channel['logo'], channel['url'], channel_id))
-			except sqlite3.IntegrityError as e:
-				print(f"Error updating channel: {e} - {channel['name']}")
-				continue
+			# Update channel if needed
+			c.execute('''UPDATE channels 
+						SET tvg_id = ?, name = ?, logo_url = ?, stream_url = ?
+						WHERE id = ?''',
+						(channel['tvg_id'], channel['name'], 
+						channel['logo'], channel['url'], channel_id))
 			
 			# Update groups
 			for group_name in channel['groups']:
 				# Insert group if not exists
-				# List of allowed group names
-				allowed_groups = [
-					'Undefined', 'Shop ', 'General ', 'Entertainment ', 'Family',
-					'Music', 'News', 'Religious', 'Animation', 'Kids',
-					'Movies ', 'Lifestyle', 'Series', 'Relax ', 'Comedy',
-					'Outdoor', 'Sports', 'Business', 'Documentary', 'Auto',
-					'Classic ', 'Education ', 'Culture ', 'Legislative ', 'Weather',
-					'Cooking', 'Travel', 'Science'
-				]
-				# Use group_name if in allowed list, else 'Undefined'
-				final_group = group_name if group_name in allowed_groups else 'Undefined'
 				c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
-						(final_group,))
+						(group_name,))
 				
 				# Get group ID
-				c.execute('SELECT id FROM groups WHERE name = ?', (final_group,))
+				c.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
 				group_id = c.fetchone()[0]
 				
 				# Create or update relationship
@@ -163,7 +129,7 @@ def insert_channels(channels:list) -> int:
 	return 200
 
 def update_channels(channels):
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	for channel in channels:
@@ -199,7 +165,7 @@ def get_channel_count() -> int:
 	"""
 	Count of channels
 	"""
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -208,25 +174,11 @@ def get_channel_count() -> int:
 	conn.close()
 	return count
 
-def get_channel_by_id(id:int , conn=None) -> list:
-    """
-    Run in same sql thread if passing conn
-    """
-    conn = sqlite3.connect(DB) if not conn  else conn
-    c = conn.cursor()
-    
-    # Use parameterized query to prevent SQL injection
-    c.execute("SELECT * FROM channels WHERE id = ?", (id,))
-    rows = c.fetchall()
-    
-    conn.close()
-    return rows
-
 def get_all_groups():
 	"""
 	veriety of groups by group id
 	"""
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -239,7 +191,7 @@ def get_groups_channel() -> list:
 	"""
 	channels by group id
 	"""
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	c.execute("SELECT * FROM channel_groups")
 	rows = c.fetchall()
@@ -250,7 +202,7 @@ def get_channel_by_group(group_id:int):
 	"""
 	channels by group id
 	"""
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -265,7 +217,7 @@ def get_channel_by_group(group_id:int):
 	return rows
 
 def find_channel_group_by_channel_id(channel_id:int):
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -281,7 +233,7 @@ def find_channel_group_by_channel_id(channel_id:int):
 # favourites 
 
 def get_favourites():
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -293,7 +245,7 @@ def get_favourites():
 	return rows  
 
 def get_favourite_channels():
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -311,7 +263,7 @@ def get_favourite_channels():
 	return rows
 
 def add_favourite(channel_id:int):
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -323,7 +275,7 @@ def add_favourite(channel_id:int):
 	conn.close()
 
 def remove_favourite(channel_id:int):
-	conn = sqlite3.connect(DB)
+	conn = sqlite3.connect('iptv_channels.db')
 	c = conn.cursor()
 	
 	# Use parameterized query to prevent SQL injection
@@ -333,19 +285,17 @@ def remove_favourite(channel_id:int):
 	
 	conn.commit()
 	conn.close()
-
-# when importing execute these
-create_tables()
+	
 
 # Test the database creation and insertion
 
-# conn = sqlite3.connect(DB)
+# conn = sqlite3.connect('test_db.db')
 # c = conn.cursor()
-# c.execute("SELECT * FROM channel_groups WHERE channel_id = 1")
-# # # # # c.execute("SELECT * FROM channel_groups WHERE channel_id = 2099")
-# # # # c.execute("SELECT * FROM groups")
+# c.execute("SELECT * FROM channels")
+# # # # c.execute("SELECT * FROM channel_groups WHERE channel_id = 2099")
+# # # c.execute("SELECT * FROM groups")
 # print(_:=c.fetchall())
-# conn.close()
+# conn.close()/
 
 # # urls = [url[-1] for url in _]
 # print(_)
@@ -357,11 +307,10 @@ print(
 	# get_channel_by_group(20)
 	# get_all_groups()
 	# [chanel for i ,(id , chanel) in enumerate(get_favourites())]
-	# get_favourites(),
-	# get_favourite_channels(),
+	# get_favourite_channels()
 	# add_favourite(71)
 	# create_tables(),
-	"hi"
+	# "hi"
 	# remove_favourite(1)
 	
 )

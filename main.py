@@ -7,11 +7,10 @@ import subprocess , requests , os
 os.environ['KIVY_WINDOW'] = 'sdl2'
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 from kivy.config import Config
-# Config.set('graphics', 'fullscreen', 'auto')  # or '1' for true fullscreen
+Config.set('graphics', 'fullscreen', '1')  # or '1' for true fullscreen
 Config.set('graphics', 'borderless', '1')
 
 
-import random , os , datetime, sys , logging , test , create_db as cdb
 from io import StringIO
 from kivymd.app import MDApp
 from kivy.uix.boxlayout import BoxLayout
@@ -28,6 +27,8 @@ from kivy.clock import Clock ,mainthread
 from kivy.metrics import dp
 from kivy.lang.builder import Builder
 from kivy.properties import ObjectProperty, StringProperty, NumericProperty , BooleanProperty
+import random , datetime, threading , logging , create_db as cdb
+from update.main import schedule_update_m3u
 from kivy.uix.screenmanager import ScreenManager, Screen
 # from kivy.core.video import video_ffpyplayer  as VideoFFPyplayer
 # VideoFFPyplayer.logger_level = 'debug'  # Enable FFmpeg debug logs
@@ -38,7 +39,7 @@ FloatLayout:
         id: info_chanel_no
         on_parent:
             app.widgets_to_hide["info_channel_no"] = self
-        text: str(app.chanel_no)
+        text: str(app.chanel_no)[:5]
         font_size: dp(40)  
         size_hint: 0.2, 0.1
         pos_hint: {'right': 0.3, 'center_y': 0.9}
@@ -69,6 +70,18 @@ FloatLayout:
         pos_hint: {'right': 0.9, 'center_y': 0.9}
         icon: "heart" if app.is_channel_no_favourite else "heart-outline"
         color: 0.7, 0.1, 0, 0.7
+    
+    MDLabel:
+        on_parent: setattr(app,"update_label" , self)
+        text: f"updates are underaway may take a while - {str(app.update_done)}%" if app.update_done < 100 else "updates done"
+        halign: "center"
+        font_size: sp(17)
+        bold: True
+        theme_text_color: "Custom"
+        text_color: 0.7, 0.5, 0, 0.7
+        size_hint: 0.7, 0.1
+        pos_hint: {'center_x': 0.5, 'center_y': 0.2}
+        # opacity: 0 if app.update_done==100 else 1
 
 
     MDCard:
@@ -102,7 +115,7 @@ FloatLayout:
                     text: "gernes 🎭"
                     halign: "right"
                     # md_bg_color: 0.7, 1, 0, 1
-                    size_hint: 0.5 , None 
+                    size_hint: 0.5 , None
                     height: dp(40)
                 MDIcon:
                     id: gernes_label_icon
@@ -134,7 +147,13 @@ FloatLayout:
                     height: dp(500)
                     # pos_hint: {'top': 0.9, 'center_x': 0.4}
 
+    NeonVolumeSphere:
+        id: neon_sphere
+        on_parent:
+            app.widgets_to_hide["neon_sphere"] = self
+        pos_hint: {'center_x': 0.5, 'center_y': 0.2}
 
+#:include kv/volume.kv
         
 <LabelChannel@BoxLayout>:
     id : gernes
@@ -223,7 +242,7 @@ class CustomRecycleView(RecycleView):
                 "gerne" : gerne,
             }
             for i, (no, domain, name, icon, gerne ,url) in enumerate(cdb.get_favourite_channels()) if no
-        ]
+        ] # 0 - favourites
 
 
     def jump_to_index(self, index):
@@ -240,6 +259,9 @@ class IPTVApp(MDApp):
     # seamphore for inputs
     seamphore_release = BooleanProperty(True)
     remote_thread_closure_callback = None
+    # updates (0 - 100)%
+    update_done = NumericProperty(0)
+    update_label = None
     # modes
     menu_mode = BooleanProperty(False)
     menu_mode_widgets = []
@@ -316,7 +338,7 @@ class IPTVApp(MDApp):
     # favourites
     known_gernes[0] = "Favourites"
 
-    volume = 1.0        # default stream volume
+    volume = NumericProperty(0.5)        # default stream volume
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -331,7 +353,7 @@ class IPTVApp(MDApp):
             state='play',
             allow_stretch=True, 
             keep_ratio=False , 
-            eos=self.on_video_state_change , 
+            # eos=self.on_video_state_change , 
             preview="prev1.png",
             volume=self.volume, 
         )
@@ -413,6 +435,20 @@ class IPTVApp(MDApp):
 
         return sm
     
+    def on_start(self):
+        # # Start the video when the app starts
+        # self.video.play()
+        # # Set the initial channel number
+        # self.channel_info_label.text = str(self.chanel_no)
+        # # Set the initial volume
+        # self.video.volume = self.volume
+        # # Set the initial time
+        # self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+        # # Set the initial favourite icon
+        # self.info.ids.channel_favourite.icon = "heart" if self.is_channel_no_favourite else "heart-outline"
+        # check update
+        Clock.schedule_once(lambda dt: self.check_update() , 10)
+    
     def on_pre_stop(self):
         # Stop the video when the app is closed
         self.video.state = 'stop'
@@ -420,8 +456,33 @@ class IPTVApp(MDApp):
         # Stop the remote server if it's running
         if hasattr(self, 'remote_thread_closure_callback') and self.remote_thread_closure_callback:
             self.remote_thread_closure_callback()
+        # Stop the manager server if it's running
+        if hasattr(self, 'manager_thread_closure_callback') and self.manager_thread_closure_callback:
+            self.manager_thread_closure_callback()
     
         # …existing code…
+
+    def check_update(self):
+        import time
+        @mainthread
+        def set_attr(value):
+            setattr(self,"update_done" , value)
+        @mainthread
+        def hide_update_label(): Clock.schedule_once(lambda dt : setattr(self.update_label,"opacity" , 0) ,0.5) if self.update_done == 100 else None
+
+        def update():
+            # set update_done=10
+            print(self.update_done)
+            set_attr(10)
+            time.sleep(5)
+            _ = schedule_update_m3u()
+            # set update_done=100
+            set_attr(100)
+            # opacity = 0
+            hide_update_label()
+        #
+        threading.Thread(target=update,daemon=True).start()
+
     def on_key_down(self, window, keycode, scancode, codepoint, modifiers):
             """
             keycode is an integer, scancode unused here, codepoint is the actual character.
@@ -477,6 +538,8 @@ class IPTVApp(MDApp):
             # volume controll up/down arrows ↑ ↓
             elif keycode in (273, 274):  
                 if not self.menu_mode:
+                    # make volume label visible
+                    [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]  
                     if keycode == 273:  # up arrow ↑ 
                         self.volume = min(self.volume + 0.1, 1.0)
                         setattr(self.video, "volume" , self.volume)
@@ -544,6 +607,8 @@ class IPTVApp(MDApp):
                 if self.seamphore_release:
                     # lock the seamphore
                     Clock.schedule_once(lambda dt: setattr(self,"seamphore_release" , False) , 0)
+                    # make remote label visible
+                    [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
                     # update the channel info_favourite label
                     self.is_channel_no_favourite = True if not self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else False
                     # get the channel by id
@@ -610,6 +675,8 @@ class IPTVApp(MDApp):
         # volume controll up/down arrows ↑ ↓
         elif keycode in ("up", "down"):  
             if not self.menu_mode:
+                # make volume label visible
+                [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
                 if keycode == "up":  # up arrow ↑ 
                     self.volume = min(self.volume + 0.1, 1.0)
                     setattr(self.video, "volume" , self.volume)
@@ -677,6 +744,8 @@ class IPTVApp(MDApp):
             if self.seamphore_release:
                 # lock the seamphore
                 Clock.schedule_once(lambda dt: setattr(self,"seamphore_release" , False) , 0)
+                # make favourite label visible
+                [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
                 # update the channel info_favourite label
                 self.is_channel_no_favourite = True if not self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] else False
                 # get the channel by id
@@ -800,8 +869,8 @@ class IPTVApp(MDApp):
         # print(instance.parent.children[1].text)
         if channel_no and type(channel_no) == int:
             self.chanel_no = channel_no  # int(instance.parent.children[1].text) if instance.parent.children[1].text.isdigit() else 0
-            # get the channel by id 
-            _ = test.get_channel_by_id(self.chanel_no)[0]  # [(10656, 'KukhnyaTV.ru', 'Кухня ТВ HD', 'https://i.imgur.com/7jxZnuS.png', 'http://stream01.vnet.am/KukhnyaTv/mono.m3u8')]
+            # get the channel by id
+            _ = cdb.get_channel_by_id(self.chanel_no)[0]  # [(10656, 'KukhnyaTV.ru', 'Кухня ТВ HD', 'https://i.imgur.com/7jxZnuS.png', 'http://stream01.vnet.am/KukhnyaTv/mono.m3u8')]
             # switch to the channel
             if _:
                 self.video.state = 'stop'
@@ -820,11 +889,11 @@ class IPTVApp(MDApp):
 
         # print("Jump to channel:", self.chanel_no)
 
-    def stop_video(self, instance):
-        if self.video.state == 'play':
-            self.video.state = 'stop'
-        elif self.video.state == 'stop':
-            self.video.state = 'play'
+    # def stop_video(self, instance):
+    #     if self.video.state == 'play':
+    #         self.video.state = 'stop'
+    #     elif self.video.state == 'stop':
+    #         self.video.state = 'play'
         
     # def switch_stream(self, *args):
     #     # Pick a random stream
@@ -835,16 +904,16 @@ class IPTVApp(MDApp):
     #     Logger.info(f"IPTV: Switching to channel {self.current_stream[1]} ({self.current_stream[3]})")
     #     print("switch_stream")
 
-    def on_video_state_change(self, instance, value):
-        if value == 'play':
-            Logger.info(f"IPTV: Stream is playing: {self.current_stream[1]}")
-        elif value == 'stop':
-            Logger.info(f"IPTV: Stream stopped: {self.current_stream[1]}")
-        elif value == 'error':
-            Logger.error(f"IPTV: Stream failed: {self.current_stream[1]}")
-            self.switch_stream()  # Automatically switch to the next stream
-        else:
-            Logger.info(f"IPTV: Stream state changed: {value}")
+    # def on_video_state_change(self, instance, value):
+    #     if value == 'play':
+    #         Logger.info(f"IPTV: Stream is playing: {self.current_stream[1]}")
+    #     elif value == 'stop':
+    #         Logger.info(f"IPTV: Stream stopped: {self.current_stream[1]}")
+    #     elif value == 'error':
+    #         Logger.error(f"IPTV: Stream failed: {self.current_stream[1]}")
+    #         self.switch_stream()  # Automatically switch to the next stream
+    #     else:
+    #         Logger.info(f"IPTV: Stream state changed: {value}")
      
     def switch_stream(self, instance): ...
         # Change to a new m3u8 URL
@@ -888,7 +957,13 @@ def close():
 remote_thread.daemon = True
 remote_thread.start()
 
+from manager import ChannelManager
 
+# start channel manager server
+
+channel_manager = ChannelManager()
+
+channel_manager.start()
 
 # Your Kivy app definition and run logic
 

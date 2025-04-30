@@ -373,7 +373,7 @@ Screen:
                 
                 MDLabel:
                     id: tv_status
-                    text: "TV: On"
+                    text: "TV: On" if not app.tv_name else app.tv_name
                     font_size: dp(14)
                     theme_text_color: "Custom"
                     text_color: 0.9, 0.9, 0.9, 1

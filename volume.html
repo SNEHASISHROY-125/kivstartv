@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Volume Sphere</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .volume-sphere {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.7);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .volume-level {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 0%;
+            background: linear-gradient(to top, rgba(59, 130, 246, 0.8), rgba(124, 58, 237, 0.8));
+            transition: height 0.3s ease;
+            z-index: 1;
+        }
+        
+        .volume-wave {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.1);
+            transform: scale(0);
+            opacity: 1;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .wave-animate {
+            animation: wave 1.5s forwards;
+        }
+        
+        @keyframes wave {
+            to {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        
+        .volume-icon {
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.7));
+        }
+        
+        .volume-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+        }
+        
+        .volume-digits {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+            z-index: 4;
+        }
+        
+        .volume-rings {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            z-index: 0;
+        }
+        
+        .ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 50%;
+        }
+        
+        .volume-control:hover {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+        }
+        
+        .volume-control:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 gap-8">
+    <h1 class="text-3xl font-bold text-blue-400 mb-8">Neon Volume Sphere</h1>
+    
+    <div class="volume-sphere volume-control" id="volume-control">
+        <!-- Volume level fill -->
+        <div class="volume-level" id="volume-level"></div>
+        
+        <!-- Animated waves -->
+        <div class="volume-indicator">
+            <!-- Volume icon -->
+            <div id="volume-icon" class="volume-icon text-5xl text-blue-400">
+                <i class="fas fa-volume-up"></i>
+            </div>
+        </div>
+        
+        <!-- Volume percentage display -->
+        <div class="volume-digits" id="volume-digits">50%</div>
+        
+        <!-- Decorative rings -->
+        <div class="volume-rings">
+            <div class="ring" style="width: 120%; height: 120%;"></div>
+            <div class="ring" style="width: 140%; height: 140%;"></div>
+            <div class="ring" style="width: 160%; height: 160%;"></div>
+        </div>
+    </div>
+    
+    <div class="flex gap-4 mt-8">
+        <button id="mute-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition">
+            <i class="fas fa-volume-mute"></i> Mute
+        </button>
+        <button id="random-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white transition">
+            <i class="fas fa-random"></i> Random
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const volumeControl = document.getElementById('volume-control');
+            const volumeLevel = document.getElementById('volume-level');
+            const volumeIcon = document.getElementById('volume-icon');
+            const volumeDigits = document.getElementById('volume-digits');
+            const muteBtn = document.getElementById('mute-btn');
+            const randomBtn = document.getElementById('random-btn');
+            
+            let volume = 50;
+            let isMuted = false;
+            let waveInterval;
+            
+            // Update volume display
+            function updateVolume(value) {
+                volume = Math.max(0, Math.min(100, value));
+                
+                // Update volume level fill
+                volumeLevel.style.height = `${volume}%`;
+                
+                // Update digits display
+                volumeDigits.textContent = `${volume}%`;
+                
+                // Update icon and colors based on volume level
+                if (volume === 0) {
+                    volumeIcon.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                    volumeIcon.className = 'volume-icon text-5xl text-red-400';
+                    volumeLevel.style.background = 'linear-gradient(to top, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))';
+                } else if (volume < 30) {
+                    volumeIcon.innerHTML = '<i class="fas fa-volume-down"></i>';
+                    volumeIcon.className = 'volume-icon text-5xl text-blue-400';
+                    volumeLevel.style.background = 'linear-gradient(to top, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))';
+                } else if (volume < 70) {
+                    volumeIcon.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    volumeIcon.className = 'volume-icon text-5xl text-blue-400';
+                    volumeLevel.style.background = 'linear-gradient(to top, rgba(59, 130, 246, 0.8), rgba(124, 58, 237, 0.8))';
+                } else {
+                    volumeIcon.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    volumeIcon.className = 'volume-icon text-5xl text-green-400';
+                    volumeLevel.style.background = 'linear-gradient(to top, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))';
+                }
+                
+                // Scale icon based on volume
+                const scale = 1 + (volume / 100) * 0.3;
+                volumeIcon.style.transform = `scale(${scale})`;
+                
+                // Create initial wave
+                createWave();
+                
+                // Adjust wave animation speed based on volume
+                clearInterval(waveInterval);
+                if (volume > 0 && !isMuted) {
+                    const speed = 1000 - (volume * 8);
+                    waveInterval = setInterval(createWave, speed);
+                }
+            }
+            
+            // Create wave effect
+            function createWave() {
+                if (isMuted) return;
+                
+                const wave = document.createElement('div');
+                wave.className = 'volume-wave w-full h-full';
+                
+                // Set wave size based on volume
+                const waveSize = 0.5 + (volume / 100) * 1.5;
+                wave.style.width = `${waveSize * 100}%`;
+                wave.style.height = `${waveSize * 100}%`;
+                wave.style.left = `${50 - (waveSize * 50)}%`;
+                wave.style.top = `${50 - (waveSize * 50)}%`;
+                
+                // Set wave color based on volume level
+                if (volume === 0) {
+                    wave.style.background = 'rgba(239, 68, 68, 0.1)';
+                } else if (volume < 30) {
+                    wave.style.background = 'rgba(59, 130, 246, 0.1)';
+                } else if (volume < 70) {
+                    wave.style.background = 'rgba(124, 58, 237, 0.1)';
+                } else {
+                    wave.style.background = 'rgba(34, 197, 94, 0.1)';
+                }
+                
+                volumeControl.appendChild(wave);
+                wave.classList.add('wave-animate');
+                
+                setTimeout(() => {
+                    wave.remove();
+                }, 1500);
+            }
+            
+            // Toggle mute
+            function toggleMute() {
+                isMuted = !isMuted;
+                
+                if (isMuted) {
+                    muteBtn.innerHTML = '<i class="fas fa-volume-up"></i> Unmute';
+                    muteBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    muteBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    
+                    volumeIcon.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                    volumeIcon.className = 'volume-icon text-5xl text-red-400';
+                    volumeLevel.style.height = '0%';
+                    volumeDigits.textContent = '0%';
+                    clearInterval(waveInterval);
+                } else {
+                    muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i> Mute';
+                    muteBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    muteBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    
+                    updateVolume(volume);
+                }
+            }
+            
+            // Click interaction
+            volumeControl.addEventListener('click', function(e) {
+                toggleMute();
+            });
+            
+            // Mouse movement for volume control
+            volumeControl.addEventListener('mousemove', function(e) {
+                if (isMuted) return;
+                
+                const rect = this.getBoundingClientRect();
+                const centerY = rect.top + rect.height;
+                
+                // Calculate volume based on vertical position (bottom is 0%, top is 100%)
+                const newVolume = Math.round(((centerY - e.clientY) / rect.height) * 100);
+                updateVolume(newVolume);
+            });
+            
+            // Touch movement for mobile
+            volumeControl.addEventListener('touchmove', function(e) {
+                if (isMuted) return;
+                e.preventDefault();
+                
+                const rect = this.getBoundingClientRect();
+                const centerY = rect.top + rect.height;
+                const touch = e.touches[0];
+                
+                // Calculate volume based on vertical position
+                const newVolume = Math.round(((centerY - touch.clientY) / rect.height) * 100);
+                updateVolume(newVolume);
+            });
+            
+            // Mute button
+            muteBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleMute();
+            });
+            
+            // Random button
+            randomBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const randomVolume = Math.floor(Math.random() * 101);
+                updateVolume(randomVolume);
+                if (isMuted) toggleMute(); // Unmute if muted
+            });
+            
+            // Initialize
+            updateVolume(50);
+        });
+    </script>
+</body>
+</html>

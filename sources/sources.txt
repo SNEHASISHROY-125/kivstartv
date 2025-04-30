@@ -1,0 +1,6 @@
+#URL:PiratesTV
+https://raw.githubusercontent.com/FunctionError/PiratesTv/refs/heads/main/combined_playlist.m3u
+
+#URL:Iptv.org
+#https://iptv-org.github.io/iptv/index.m3u
+
