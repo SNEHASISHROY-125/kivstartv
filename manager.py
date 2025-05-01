@@ -38,14 +38,17 @@ def get_channels():
 def add_channel(tvg_id, name, stream_url, logo_url):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute('INSERT INTO channels (tvg_id, name, logo_url, stream_url) VALUES (?, ?, ?, ?)', (tvg_id, name, logo_url, stream_url))
+    try: cur.execute('INSERT INTO channels (tvg_id, name, logo_url, stream_url) VALUES (?, ?, ?, ?)', (tvg_id, name, logo_url, stream_url))
+    except sqlite3.IntegrityError as e: print(f"Error updating channel: {e} - {name}")
     conn.commit()
     conn.close()
 
 def update_channel(ch_id, tvg_id, name, stream_url, logo_url):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute('UPDATE channels SET tvg_id=?, name=?, logo_url=?, stream_url=? WHERE id=?', (tvg_id, name, logo_url, stream_url, ch_id))
+    try:
+        cur.execute('UPDATE channels SET tvg_id=?, name=?, logo_url=?, stream_url=? WHERE id=?', (tvg_id, name, logo_url, stream_url, ch_id))
+    except sqlite3.IntegrityError as e:print(f"Error updating channel: {e} - {name}")
     conn.commit()
     conn.close()
 
@@ -213,15 +216,21 @@ FRONTEND_HTML = '''
     <div id="m3uPreviewSection" style="display:none; margin-top:20px;">
         <h2>Preview/Edit Uploaded Channels</h2>
         <div style="display: flex; align-items: flex-start; gap: 30px;">
-            <table id="m3uPreviewTable">
-                <thead><tr><th>Name</th><th>Logo</th><th>Group</th><th>Stream URL</th><th>Preview</th><th>Keep</th></tr></thead>
-                <tbody></tbody>
-            </table>
+            <div style="max-height: 600px; overflow-y: auto;" id="m3uTableContainer">
+                <table id="m3uPreviewTable">
+                    <thead><tr><th>Name</th><th>Logo</th><th>Group</th><th>Stream URL</th><th>Preview</th><th>Keep</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div style="min-width:420px;">
                 <video id="m3uPreviewPlayer" controls width="400" style="display:none;"></video>
             </div>
         </div>
-        <button id="saveM3uChannelsBtn" style="margin-top:10px;">Save Selected Channels</button>
+        <div style="margin-top: 10px;">
+            <button onclick="m3uSelectAll()">Select All</button>
+            <button onclick="m3uSelectNone()">Select None</button>
+            <button id="saveM3uChannelsBtn" style="margin-left: 10px;">Save Selected Channels</button>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
@@ -233,6 +242,9 @@ FRONTEND_HTML = '''
     let loading = false;
     let m3uChannels = [];
     let m3uKeep = [];
+    let m3uRenderedCount = 0; // Track rendered M3U channels
+    const M3U_PAGE_SIZE = 20; // Number of M3U channels to render at once
+
     function showSpinner(show) {
         document.getElementById('spinner').style.display = show ? 'flex' : 'none';
     }
@@ -298,23 +310,32 @@ FRONTEND_HTML = '''
         }
         renderedCount += toRender.length;
     }
-    function renderM3uPreview() {
+    function renderM3uPreview(reset) {
         const section = document.getElementById('m3uPreviewSection');
-        const table = document.getElementById('m3uPreviewTable').getElementsByTagName('tbody')[0];
-        table.innerHTML = '';
-        m3uChannels.forEach((ch, idx) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><input value="${ch.name || ''}" onchange="window.m3uEditName(${idx}, this.value)"></td>
-                <td>${ch.logo ? `<img src='${ch.logo}' style='max-height:30px;'/>` : ''}</td>
-                <td>${ch.groups && ch.groups.length ? ch.groups.join(', ') : ''}</td>
-                <td><input value="${ch.url || ''}" style="width:220px" onchange="window.m3uEditUrl(${idx}, this.value)"></td>
-                <td><button onclick="window.m3uPreviewStream('${ch.url || ''}')">Preview</button></td>
-                <td><input type="checkbox" ${m3uKeep[idx] ? 'checked' : ''} onchange="window.m3uToggleKeep(${idx}, this.checked)"></td>
-            `;
-            table.appendChild(row);
-        });
         section.style.display = m3uChannels.length ? '' : 'none';
+        
+        let tbody = document.querySelector('#m3uPreviewTable tbody');
+        if (reset) {
+            tbody.innerHTML = '';
+            m3uRenderedCount = 0;
+        }
+        
+        let toRender = m3uChannels.slice(m3uRenderedCount, m3uRenderedCount + M3U_PAGE_SIZE);
+        for (let i = 0; i < toRender.length; i++) {
+            const idx = m3uRenderedCount + i;
+            const ch = toRender[i];
+            let row = document.createElement('tr');
+            row.innerHTML = `
+            <td><input value="${ch.name || ''}" onchange="window.m3uEditName(${idx}, this.value)"></td>
+            <td>${ch.logo ? `<img src='${ch.logo}' style='max-height:30px;'/>` : ''}</td>
+            <td>${ch.groups && ch.groups.length ? ch.groups.join(', ') : ''}</td>
+            <td><input value="${ch.url || ''}" style="width:220px" onchange="window.m3uEditUrl(${idx}, this.value)"></td>
+            <td><button onclick="window.m3uPreviewStream('${ch.url || ''}')">Preview</button></td>
+            <td><input type="checkbox" ${m3uKeep[idx] ? 'checked' : ''} onchange="window.m3uToggleKeep(${idx}, this.checked)"></td>
+            `;
+            tbody.appendChild(row);
+        }
+        m3uRenderedCount += toRender.length;
     }
     function onScroll() {
         let container = document.getElementById('tableContainer');
@@ -324,6 +345,20 @@ FRONTEND_HTML = '''
                 showSpinner(true);
                 setTimeout(() => {
                     renderChannels(false);
+                    showSpinner(false);
+                    loading = false;
+                }, 10);
+            }
+        }
+    }
+    function onM3uScroll() {
+        let container = document.getElementById('m3uTableContainer');
+        if (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) {
+            if (m3uRenderedCount < m3uChannels.length && !loading) {
+                loading = true;
+                showSpinner(true);
+                setTimeout(() => {
+                    renderM3uPreview(false);
                     showSpinner(false);
                     loading = false;
                 }, 10);
@@ -392,6 +427,14 @@ FRONTEND_HTML = '''
             }, 1000);
         }
     }
+    window.m3uSelectAll = function() {
+        m3uKeep = m3uChannels.map(() => true);
+        renderM3uPreview(true);
+    }
+    window.m3uSelectNone = function() {
+        m3uKeep = m3uChannels.map(() => false);
+        renderM3uPreview(true);
+    }
     document.getElementById('filterInput').addEventListener('input', function() {
         showSpinner(true);
         setTimeout(() => {
@@ -400,6 +443,7 @@ FRONTEND_HTML = '''
         }, 100);
     });
     document.getElementById('tableContainer').addEventListener('scroll', onScroll);
+    document.getElementById('m3uTableContainer').addEventListener('scroll', onM3uScroll);
     loadChannels();
     document.getElementById('addForm').onsubmit = async function(e) {
         e.preventDefault();
@@ -421,7 +465,7 @@ FRONTEND_HTML = '''
         if (data.status === 'ok' && data.channels) {
             m3uChannels = data.channels;
             m3uKeep = m3uChannels.map(() => true);
-            renderM3uPreview();
+            renderM3uPreview(true);
         } else {
             alert('Failed to parse M3U file: ' + (data.detail || 'Unknown error'));
         }
@@ -441,7 +485,7 @@ FRONTEND_HTML = '''
         }
         m3uChannels = [];
         m3uKeep = [];
-        renderM3uPreview();
+        renderM3uPreview(true);
         await loadChannels();
         showSpinner(false);
         alert('Selected channels saved!');
@@ -473,4 +517,4 @@ class ChannelManager(threading.Thread):
 
 
 # if __name__ == "__main__":
-uvicorn.run(app, host="0.0.0.0", port=8030, log_level="info")
+# uvicorn.run(app, host="0.0.0.0", port=8030, log_level="info")

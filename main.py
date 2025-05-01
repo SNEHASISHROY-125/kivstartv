@@ -219,6 +219,7 @@ class CustomRecycleView(RecycleView):
     def init(self, **kwargs):
         # Get the channel data from the database
         # get fav channels
+        print("initing....")
         favs = {}
         [favs.update({channel: id}) for i , (id , channel) in enumerate(cdb.get_favourites()) if channel]        
 
@@ -243,6 +244,9 @@ class CustomRecycleView(RecycleView):
             }
             for i, (no, domain, name, icon, gerne ,url) in enumerate(cdb.get_favourite_channels()) if no
         ] # 0 - favourites
+
+        print("data : " , self.data , self.group_id)
+        if not self.data: print(cdb.get_channel_by_group(self.group_id))
 
 
     def jump_to_index(self, index):
@@ -777,7 +781,8 @@ class IPTVApp(MDApp):
         self.info.ids.channels_rv.group_id = self.current_gerne
         self.info.ids.channels_rv.init()
         # Set the first item["channel"] as menu_mode_scroll_to_channel
-        self.menu_mode_scroll_to_channel = int(self.info.ids.channels_rv.data[0]['channel_no']) if self.info.ids.channels_rv else 0
+        try:self.menu_mode_scroll_to_channel = int(self.info.ids.channels_rv.data[0]['channel_no']) if self.info.ids.channels_rv else 0
+        except IndexError: print("IndexError: ", self.info.ids.channels_rv.data)
 
     def mark_channel_favourite(self): 
         if self.menu_mode:

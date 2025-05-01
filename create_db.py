@@ -84,17 +84,17 @@ def insert_channels(channels:list) -> int:
 				# Insert group if not exists
 				# List of allowed group names
 				allowed_groups = [
-					'Undefined', 'Shop ', 'General ', 'Entertainment ', 'Family',
+					'Undefined', 'Shop', 'General', 'Entertainment', 'Family',
 					'Music', 'News', 'Religious', 'Animation', 'Kids',
-					'Movies ', 'Lifestyle', 'Series', 'Relax ', 'Comedy',
+					'Movies', 'Lifestyle', 'Series', 'Relax', 'Comedy',
 					'Outdoor', 'Sports', 'Business', 'Documentary', 'Auto',
-					'Classic ', 'Education ', 'Culture ', 'Legislative ', 'Weather',
+					'Classic', 'Education', 'Culture', 'Legislative', 'Weather',
 					'Cooking', 'Travel', 'Science'
 				]
 				# Use group_name if in allowed list, else 'Undefined'
 				final_group = group_name if group_name in allowed_groups else 'Undefined'
-				c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
-						(final_group,))
+				# c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
+				# 		(final_group,))
 				
 				# Get group ID
 				c.execute('SELECT id FROM groups WHERE name = ?', (final_group,))
@@ -127,17 +127,17 @@ def insert_channels(channels:list) -> int:
 				# Insert group if not exists
 				# List of allowed group names
 				allowed_groups = [
-					'Undefined', 'Shop ', 'General ', 'Entertainment ', 'Family',
+					'Undefined', 'Shop', 'General', 'Entertainment', 'Family',
 					'Music', 'News', 'Religious', 'Animation', 'Kids',
-					'Movies ', 'Lifestyle', 'Series', 'Relax ', 'Comedy',
+					'Movies', 'Lifestyle', 'Series', 'Relax', 'Comedy',
 					'Outdoor', 'Sports', 'Business', 'Documentary', 'Auto',
-					'Classic ', 'Education ', 'Culture ', 'Legislative ', 'Weather',
+					'Classic', 'Education', 'Culture', 'Legislative', 'Weather',
 					'Cooking', 'Travel', 'Science'
 				]
 				# Use group_name if in allowed list, else 'Undefined'
 				final_group = group_name if group_name in allowed_groups else 'Undefined'
-				c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
-						(final_group,))
+				# c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', 
+				# 		(final_group,))
 				
 				# Get group ID
 				c.execute('SELECT id FROM groups WHERE name = ?', (final_group,))
@@ -336,6 +336,70 @@ def remove_favourite(channel_id:int):
 
 # when importing execute these
 create_tables()
+# add these groups to the db at db init | first time
+# check if groups table is empty
+
+from urllib.parse import unquote
+import re
+
+def parse_m3u(file_path):
+    channels = []
+    current_channel = None
+    current_options = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#EXTM3U'):
+                continue
+            if line.startswith('#EXTINF'):
+                # Parse metadata
+                match = re.match(r'#EXTINF:-?\d+\s*(.*?),(.*)', line)
+                if match:
+                    attrs = match.group(1)
+                    name = unquote(match.group(2)).strip()
+                    tvg_id = re.search(r'tvg-id="([^"]+)"', attrs)
+                    logo = re.search(r'tvg-logo="([^"]+)"', attrs)
+                    groups = re.search(r'group-title="([^"]+)"', attrs)
+                    current_channel = {
+                        'tvg_id': tvg_id.group(1) if tvg_id else None,
+                        'name': name,
+                        'logo': unquote(logo.group(1)) if logo else None,
+                        'groups': [g.strip() for g in groups.group(1).split(';')] if groups else [],
+                        'url': None,
+                        'options': []
+                    }
+            elif line.startswith('#EXTVLCOPT:'):
+                option = line[len('#EXTVLCOPT:'):].strip()
+                current_options.append(option)
+            elif line and not line.startswith('#'):
+                if current_channel:
+                    current_channel['url'] = unquote(line)
+                    current_channel['options'] = current_options.copy()
+                    channels.append(current_channel)
+                    current_channel = None
+                    current_options.clear()
+    return channels
+
+conn = sqlite3.connect(DB)
+c = conn.cursor()
+if c.execute("SELECT COUNT(*) FROM groups").fetchone()[0] == 0:
+	groups = [
+		'Undefined', 'Shop', 'General', 'Entertainment', 'Family',
+		'Music', 'News', 'Religious', 'Animation', 'Kids',
+		'Movies', 'Lifestyle', 'Series', 'Relax', 'Comedy',
+		'Outdoor', 'Sports', 'Business', 'Documentary', 'Auto',
+		'Classic', 'Education', 'Culture', 'Legislative', 'Weather',
+		'Cooking', 'Travel', 'Science'
+	]
+	for group in groups:
+		c.execute('INSERT OR IGNORE INTO groups (name) VALUES (?)', (group,))
+	conn.commit()
+	
+	# insert base channels
+	channels = parse_m3u(config['app']['base_m3u_path'])
+	insert_channels(channels)
+
+conn.close()
 
 # Test the database creation and insertion
 
@@ -354,7 +418,8 @@ print(
 	# get_groups_channel()
 	# get_all_groups()
 	# get_channel_count()
-	# get_channel_by_group(20)
+	# get_channel_by_group(2),
+	find_channel_group_by_channel_id(5416),
 	# get_all_groups()
 	# [chanel for i ,(id , chanel) in enumerate(get_favourites())]
 	# get_favourites(),

@@ -1,9 +1,9 @@
 from update import main as update
 
-print(update.schedule_update_m3u())
+# print(update.schedule_update_m3u())
 
 
-import requests , os , json , datetime 
+import requests , os , json , datetime
 import re , sqlite3 ,configparser
 from urllib.parse import unquote
 import create_db as cdb
@@ -46,6 +46,6 @@ def parse_m3u(file_path):
                     current_options.clear()
     return channels
 
-# channels = parse_m3u("archive/test.m3u")
+channels = parse_m3u("jiotv.m3u8")
 # # do db stuff | insert or update
-# res = cdb.insert_channels(channels)
+res = cdb.insert_channels(channels)
