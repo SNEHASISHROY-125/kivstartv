@@ -21,6 +21,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.recycleview import RecycleView
+from kivy.uix.modalview import ModalView
 from kivy.core.window import Window
 from kivy.logger import Logger
 from kivy.clock import Clock ,mainthread
@@ -204,12 +205,39 @@ FloatLayout:
         spacing: dp(10)
         padding: dp(10)
         
-
 """
 
-# channels_no = []
-# channels_icon = []
-# channels_name = []
+REMOTE_MODAL = '''
+
+MDCard:
+    id : qr_card
+    ip : app.local_ip
+    size_hint: None , None
+    width: dp(350)
+    height: dp(400)
+    padding: dp(10)
+    pos_hint: {'top': 0.7, 'center_x': 0.5}
+    md_bg_color: 0.7, 1, 0, 0.7
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: dp(10)
+        radius: dp(20)
+        AsyncImage:
+            source: "qr.png"
+            allow_stretch: True
+            keep_ratio: True
+            pos_hint: {'center_y': 0.5}
+        MDLabel:
+            id : gernes_label
+            text: f"{qr_card.ip}\\nuse this IP address to connect your remote"
+            font_style: "Caption"
+            theme_text_color: "Custom"
+            text_color: 0.7, 1, 0, 1
+            halign: "center"
+            size_hint_y: None
+            height: dp(40)
+'''
+
 
 class CustomRecycleView(RecycleView):
     group_id = NumericProperty(1)
@@ -219,7 +247,7 @@ class CustomRecycleView(RecycleView):
     def init(self, **kwargs):
         # Get the channel data from the database
         # get fav channels
-        print("initing....")
+        # print("initing....")
         favs = {}
         [favs.update({channel: id}) for i , (id , channel) in enumerate(cdb.get_favourites()) if channel]        
 
@@ -245,8 +273,8 @@ class CustomRecycleView(RecycleView):
             for i, (no, domain, name, icon, gerne ,url) in enumerate(cdb.get_favourite_channels()) if no
         ] # 0 - favourites
 
-        print("data : " , self.data , self.group_id)
-        if not self.data: print(cdb.get_channel_by_group(self.group_id))
+        # print("data : " , self.data , self.group_id)
+        # if not self.data: print(cdb.get_channel_by_group(self.group_id))
 
 
     def jump_to_index(self, index):
@@ -263,6 +291,8 @@ class IPTVApp(MDApp):
     # seamphore for inputs
     seamphore_release = BooleanProperty(True)
     remote_thread_closure_callback = None
+    remote_connected_to = StringProperty("")
+    local_ip = StringProperty("0.0.0.0")
     # updates (0 - 100)%
     update_done = NumericProperty(0)
     update_label = None
@@ -305,7 +335,7 @@ class IPTVApp(MDApp):
         (26, 'Cooking'), (27, 'Travel'), (28, 'Science') 
         ]
     }
-    known_gernes
+    # known_gernes
     # known gernes icons
     known_gernes_icons = {
         1: "help-circle",
@@ -437,6 +467,15 @@ class IPTVApp(MDApp):
         screen.add_widget(self.info)
         sm.add_widget(screen)
 
+        # Create a ModalView
+        if not hasattr(self , "modal"):
+            # setattr(self , "ip" , "192.186.1.7")
+            self.modal = ModalView(size_hint=(0.4, 0.4), auto_dismiss=True ,overlay_color=(0.1, 0.1, 0.4, 0.4))
+            # Load the content of the modal from a KV file
+            self.modal.add_widget(Builder.load_string(REMOTE_MODAL))
+        # bind self.remote_connected_to to the modal
+        self.bind(remote_connected_to=lambda instance, value: self.dismiss_modal() if value else self.show_modal())
+
         return sm
     
     def on_start(self):
@@ -450,8 +489,12 @@ class IPTVApp(MDApp):
         # self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
         # # Set the initial favourite icon
         # self.info.ids.channel_favourite.icon = "heart" if self.is_channel_no_favourite else "heart-outline"
+        # Prevent screen timeout/sleep
+        Window.allow_screensaver = False
         # check update
         Clock.schedule_once(lambda dt: self.check_update() , 10)
+        # show the remote-modal
+        self.show_modal()
     
     def on_pre_stop(self):
         # Stop the video when the app is closed
@@ -464,7 +507,16 @@ class IPTVApp(MDApp):
         if hasattr(self, 'manager_thread_closure_callback') and self.manager_thread_closure_callback:
             self.manager_thread_closure_callback()
     
-        # …existing code…
+    @mainthread
+    def dismiss_modal(self): self.modal.dismiss() if hasattr(self , "modal") else None
+    @mainthread
+    def show_modal(self):
+        # Show the modal
+        self.modal.open()
+
+    @mainthread
+    def set_local_ip(self, ip:str):
+        Clock.schedule_once(lambda dt: setattr(self,"local_ip" , ip) , 0.5)
 
     def check_update(self):
         import time
@@ -771,7 +823,7 @@ class IPTVApp(MDApp):
         ``1`` for next gerne
         ``0`` for previous gerne
         """
-        # change gernes 
+        # change gernes
         self.current_gerne  =  min(self.current_gerne + 1, self.total_gernes) if direction else max(self.current_gerne - 1, 0) # 0 - favourites ❤
         # change gernes label gerne
         self.info.ids.gernes_label.text = self.known_gernes[self.current_gerne]
@@ -951,8 +1003,14 @@ def handle_remote_command(action):
     app_.remote_keys(action)
     # Plug this into your IPTV logic
 
+def set_local_ip(ip):
+    app_.set_local_ip(ip)
+
+def set_connected_client(ip):
+    app_.remote_connected_to = ip
+
 # Start remote socket server
-remote_thread = RemoteSocketServer(callback_handler=handle_remote_command)
+remote_thread = RemoteSocketServer(callback_handler=handle_remote_command,set_ip_callback=set_local_ip,set_client_ip_callback=set_connected_client)
 
 def close():
     remote_thread.running = False

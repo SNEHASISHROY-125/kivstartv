@@ -2,9 +2,11 @@ import socket
 import threading
 
 class RemoteSocketServer(threading.Thread):
-	def __init__(self, callback_handler, host='0.0.0.0', port=9090):
+	def __init__(self, callback_handler, set_ip_callback, set_client_ip_callback, host='0.0.0.0', port=9090):
 		super().__init__()
 		self.callback_handler = callback_handler
+		self.set_ip = set_ip_callback
+		self.set_client_ip_callback = set_client_ip_callback
 		self.tv_name = ""
 		self.host = host
 		self.port = port
@@ -62,27 +64,35 @@ class RemoteSocketServer(threading.Thread):
 
 	def run(self):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+			hostname = socket.gethostbyname(socket.gethostname())
+			print(f"[SocketServer] Hostname: {hostname}")
+			# set the IP address to the app.local_ip
+			self.set_ip(hostname)
 			server.bind((self.host, self.port))
 			server.listen(5) # max 5 connections
 			print(f"[SocketServer] Listening on {self.host}:{self.port}")
 			
 			# handles input from the client
 			def handler():
+				# set the client IP address
+				self.set_client_ip_callback(self.addr[0])
 				while self.running:
 					data = self.client.recv(1024).decode()
 					print(f"[SocketServer] Received: {data.strip()}")
 					if not self.running or not data:
 						print("[SocketServer] Connection closed")
+						# set the client IP address to ""
+						self.set_client_ip_callback("")
 						break
 					self.handle_command(data)
 
 			while self.running:
 				try:
-					self.client, addr = server.accept()
-					print(f"[SocketServer] Connection from {addr}")
+					self.client, self.addr = server.accept()
+					print(f"[SocketServer] Connection from {self.addr}")
 					
 					# continue to handle the connection until closed
-					with self.client:	
+					with self.client:
 						handler()
 
 				except Exception as e:
