@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeTV | Free IPTV Streaming</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .hero-bg {
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('src/demo_collage.png');
+            background-size: cover;
+            background-position: center;
+        }
+        .content-card:hover {
+            transform: scale(1.05);
+        }
+        .screenshot {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .screenshots-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+        }
+        .screenshots-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .screenshot-item {
+            flex: 0 0 auto;
+            scroll-snap-align: start;
+            margin-right: 1.5rem;
+        }
+        .header-transparent {
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .header-transparent.scrolled {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <!-- Navigation -->
+    <nav id="main-header" class="header-transparent fixed w-full z-10 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-red-500 text-2xl font-bold">FreeTV</span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">Home</a>
+                    <a href="#" class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">Live TV</a>
+                    <a href="#" class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">Movies</a>
+                    <a href="#" class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">Sports</a>
+                </div>
+                <div class="flex items-center">
+                    <a href="https://github.com/yourusername/freetv" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 flex items-center">
+                        <i class="fab fa-github mr-2"></i> GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-bg text-white pt-32 pb-24">
+        <div class="max-w-3xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6">
+                Free IPTV Streaming
+            </h1>
+            <p class="text-xl mb-8">
+                Thousands of live channels and on-demand content. Completely free.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#download" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded transition duration-300">
+                    Download Now
+                </a>
+                <a href="#screenshots" class="bg-transparent hover:bg-white hover:bg-opacity-10 text-white font-semibold py-3 px-8 border border-white rounded transition duration-300">
+                    View Screenshots
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Channel Grid -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h2 class="text-2xl font-bold mb-8">Popular Channels</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <!-- Channel thumbnails -->
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/FF0000/FFFFFF?text=Sports" alt="Sports" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Sports Channel</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/0000FF/FFFFFF?text=News" alt="News" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">News Channel</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/00FF00/FFFFFF?text=Movies" alt="Movies" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Movie Channel</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/FF00FF/FFFFFF?text=Kids" alt="Kids" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Kids Channel</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/FFFF00/000000?text=Music" alt="Music" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Music Channel</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/00FFFF/000000?text=Documentary" alt="Documentary" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Documentary</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- More Content Grids -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-2xl font-bold mb-8">Popular TV Shows</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <!-- TV Show thumbnails -->
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+1" alt="Show 1" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Popular Show</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+2" alt="Show 2" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Hit Series</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+3" alt="Show 3" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">New Episode</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+4" alt="Show 4" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Binge Worthy</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+5" alt="Show 5" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Fan Favorite</span>
+                </div>
+            </div>
+            <div class="content-card bg-gray-800 aspect-video rounded overflow-hidden transition duration-300 relative group">
+                <img src="https://via.placeholder.com/300x169/333333/FFFFFF?text=Show+6" alt="Show 6" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300">
+                    <span class="text-white font-medium">Critic's Choice</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshots Section -->
+    <div id="screenshots" class="bg-gray-800 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold mb-8 text-center">App Screenshots</h2>
+            <div class="relative">
+                <div class="screenshots-container pb-6">
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=Home+Screen" alt="Home Screen" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=Channel+List" alt="Channel List" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=Live+Stream" alt="Live Stream" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=Settings" alt="Settings" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=EPG" alt="EPG" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot rounded-lg overflow-hidden transition duration-300 w-72">
+                            <img src="https://via.placeholder.com/400x711/222222/FFFFFF?text=Categories" alt="Categories" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Section -->
+    <div id="download" class="bg-black py-16">
+        <div class="max-w-3xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold mb-6">Download FreeTV Now</h2>
+            <p class="text-xl mb-8">Available on multiple platforms</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="https://github.com/yourusername/freetv/releases" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded transition duration-300 flex items-center justify-center">
+                    <i class="fab fa-windows mr-2"></i> Windows
+                </a>
+                <a href="https://github.com/yourusername/freetv/releases" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded transition duration-300 flex items-center justify-center">
+                    <i class="fab fa-apple mr-2"></i> macOS
+                </a>
+                <a href="https://github.com/yourusername/freetv/releases" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded transition duration-300 flex items-center justify-center">
+                    <i class="fab fa-android mr-2"></i> Android
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="bg-gray-900 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold">Why Choose FreeTV?</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center p-6 bg-gray-800 rounded-lg">
+                    <div class="bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-dollar-sign text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">100% Free</h3>
+                    <p class="text-gray-400">No subscriptions, no hidden fees. Enjoy premium content without paying a dime.</p>
+                </div>
+                <div class="text-center p-6 bg-gray-800 rounded-lg">
+                    <div class="bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-tv text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Thousands of Channels</h3>
+                    <p class="text-gray-400">Sports, news, movies, TV shows from around the world in multiple languages.</p>
+                </div>
+                <div class="text-center p-6 bg-gray-800 rounded-lg">
+                    <div class="bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-code text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Open Source</h3>
+                    <p class="text-gray-400">Transparent code on GitHub. Contribute or customize to your needs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-black py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold mb-4 text-red-500">FreeTV</h3>
+                    <p class="text-gray-400 text-sm">
+                        Free and open source IPTV streaming application.
+                    </p>
+                    <div class="mt-4 flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-github"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-discord"></i></a>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-300 uppercase mb-4">Navigation</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">Home</a></li>
+                        <li><a href="#screenshots" class="text-gray-400 hover:text-white text-sm">Screenshots</a></li>
+                        <li><a href="#download" class="text-gray-400 hover:text-white text-sm">Download</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-300 uppercase mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">Documentation</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">GitHub Issues</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">Community</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-300 uppercase mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">Disclaimer</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">Privacy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white text-sm">License</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-12 border-t border-gray-800 pt-8">
+                <p class="text-gray-400 text-sm text-center">
+                    &copy; 2023 FreeTV. Open source project. Not affiliated with any content providers.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll effect
+        const header = document.getElementById('main-header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Simple hover effects
+        document.querySelectorAll('.content-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.classList.add('shadow-lg');
+            });
+            card.addEventListener('mouseleave', () => {
+                card.classList.remove('shadow-lg');
+            });
+        });
+    </script>
+</body>
+</html>

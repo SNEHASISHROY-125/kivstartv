@@ -3,7 +3,7 @@
 IPTV Player
 """
 
-import subprocess , requests , os 
+import subprocess , requests , os , time ,qrcode
 os.environ['KIVY_WINDOW'] = 'sdl2'
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 from kivy.config import Config
@@ -113,14 +113,14 @@ FloatLayout:
                     id : gernes_label
                     # on_parent:
                     #     app.menu_mode_widgets.append(self)
-                    text: "gernes 🎭"
+                    text: "Undefined"
                     halign: "right"
                     # md_bg_color: 0.7, 1, 0, 1
                     size_hint: 0.5 , None
                     height: dp(40)
                 MDIcon:
                     id: gernes_label_icon
-                    icon: "car"
+                    icon: "help-circle"
                     pos_hint: {'center_y': 0.5}
                 MDLabel:
                     text: ""
@@ -158,7 +158,6 @@ FloatLayout:
         
 <LabelChannel@BoxLayout>:
     id : gernes
-    # on_parent: setattr(app,"gernes_box" , self)
     channel_no: ''
     icon: ''
     channel_name: ''
@@ -185,6 +184,9 @@ FloatLayout:
     AsyncImage:
         id: channel_icon
         source: root.icon 
+        on_error: 
+            print("error loading icon")
+            setattr(self ,"source", "icon.png")
     Label:
         text: root.channel_name
     MDIcon:
@@ -223,7 +225,7 @@ MDCard:
         spacing: dp(10)
         radius: dp(20)
         AsyncImage:
-            source: "qr.png"
+            source: app.get_qr(qr_card.ip)
             allow_stretch: True
             keep_ratio: True
             pos_hint: {'center_y': 0.5}
@@ -248,13 +250,21 @@ class CustomRecycleView(RecycleView):
         # Get the channel data from the database
         # get fav channels
         # print("initing....")
+        def clean_url(url):
+            if not url or url == " ":
+                return "icon.png"
+            try:
+                # Replace spaces with %20
+                return url.replace(" ", "%20")
+            except:
+                return "icon.png"
         favs = {}
         [favs.update({channel: id}) for i , (id , channel) in enumerate(cdb.get_favourites()) if channel]        
 
         self.data = [
             {
                 "channel_no": str(no),
-                "icon": icon if not icon == None else "prev1.png",
+                "icon": clean_url(icon) if icon and not icon==" " else "icon.png",
                 "channel_name": name,
                 "selected": i == 0 , # Only the first is selected initially
                 "favourite": True if no in favs.keys() else False,
@@ -264,7 +274,7 @@ class CustomRecycleView(RecycleView):
         ] if self.group_id != 0 else [
             {
                 "channel_no": str(no),
-                "icon": icon if not icon == None else "prev1.png",
+                "icon": icon if icon and not icon==" " else "icon.png",
                 "channel_name": name,
                 "selected": i == 0 , # Only the first is selected initially
                 "favourite": True if no in favs.keys() else False,
@@ -278,7 +288,8 @@ class CustomRecycleView(RecycleView):
 
 
     def jump_to_index(self, index):
-        self.scroll_y = 1 - (index / (len(self.data) - 1))  # index/number of widgets
+        try: self.scroll_y = 1 - (index / (len(self.data) - 1))  # index/number of widgets
+        except ZeroDivisionError: ...
 
 class IPTVApp(MDApp):
 
@@ -388,7 +399,7 @@ class IPTVApp(MDApp):
             allow_stretch=True, 
             keep_ratio=False , 
             # eos=self.on_video_state_change , 
-            preview="prev1.png",
+            preview="icon.png",
             volume=self.volume, 
         )
         
@@ -400,17 +411,17 @@ class IPTVApp(MDApp):
         
         # stop_btn = Button(text="Stop")
         # stop_btn.bind(on_press=self.stop_video)
-        box = BoxLayout(orientation='horizontal')
-        box.add_widget(TextInput(text=self.m3u8_source, multiline=False, size_hint_x=0.8))
-        box.add_widget(Button(text="Play", size_hint_x=0.2))
-        box.children[0].bind(on_press=self.jump_to_chanel)
+        # box = BoxLayout(orientation='horizontal')
+        # box.add_widget(TextInput(text=self.m3u8_source, multiline=False, size_hint_x=0.8))
+        # box.add_widget(Button(text="Play", size_hint_x=0.2))
+        # box.children[0].bind(on_press=self.jump_to_chanel)
         
-        switch_btn = Button(text="Switch Stream")
-        switch_btn.bind(on_press=self.switch_stream)
+        # switch_btn = Button(text="Switch Stream")
+        # switch_btn.bind(on_press=self.switch_stream)
         
-        # add to hide dict
-        self.widgets_to_hide["switch_btn"] = switch_btn
-        self.widgets_to_hide["box"] = box
+        # # add to hide dict
+        # self.widgets_to_hide["switch_btn"] = switch_btn
+        # self.widgets_to_hide["box"] = box
 
         # btn_layout.add_widget(box)
         # btn_layout.add_widget(switch_btn)
@@ -427,7 +438,7 @@ class IPTVApp(MDApp):
         # add to hide dict
         self.info = Builder.load_string(INFO)
         self.channel_info_label = self.info.ids.info_chanel_no
-        Clock.schedule_once(lambda dt : setattr(self,"gernes_box" , False) , 7)
+        # Clock.schedule_once(lambda dt : setattr(self,"gernes_box" , False) , 7)
         # self.widgets_to_hide["info"] = info
 
         # Log display label
@@ -491,6 +502,8 @@ class IPTVApp(MDApp):
         # self.info.ids.channel_favourite.icon = "heart" if self.is_channel_no_favourite else "heart-outline"
         # Prevent screen timeout/sleep
         Window.allow_screensaver = False
+        # hide menu
+        [setattr(widget,"opacity", 0) for widget in self.menu_mode_widgets]
         # check update
         Clock.schedule_once(lambda dt: self.check_update() , 10)
         # show the remote-modal
@@ -507,6 +520,11 @@ class IPTVApp(MDApp):
         if hasattr(self, 'manager_thread_closure_callback') and self.manager_thread_closure_callback:
             self.manager_thread_closure_callback()
     
+    def get_qr(self,content:str):
+        qr = qrcode.make(content)
+        qr.save("qr.png")
+        return "qr.png"
+
     @mainthread
     def dismiss_modal(self): self.modal.dismiss() if hasattr(self , "modal") else None
     @mainthread
@@ -519,7 +537,6 @@ class IPTVApp(MDApp):
         Clock.schedule_once(lambda dt: setattr(self,"local_ip" , ip) , 0.5)
 
     def check_update(self):
-        import time
         @mainthread
         def set_attr(value):
             setattr(self,"update_done" , value)
@@ -530,7 +547,7 @@ class IPTVApp(MDApp):
             # set update_done=10
             print(self.update_done)
             set_attr(10)
-            time.sleep(5)
+            time.sleep(1)
             _ = schedule_update_m3u()
             # set update_done=100
             set_attr(100)
@@ -832,6 +849,11 @@ class IPTVApp(MDApp):
         # set the next group id
         self.info.ids.channels_rv.group_id = self.current_gerne
         self.info.ids.channels_rv.init()
+        # take the selection back to the first channel
+        self.current_index = 0
+        rv = self.current_rv if self.current_rv else  self.info.ids.channels_rv
+        rv.refresh_from_data()
+        rv.jump_to_index(self.current_index)
         # Set the first item["channel"] as menu_mode_scroll_to_channel
         try:self.menu_mode_scroll_to_channel = int(self.info.ids.channels_rv.data[0]['channel_no']) if self.info.ids.channels_rv else 0
         except IndexError: print("IndexError: ", self.info.ids.channels_rv.data)
@@ -903,24 +925,6 @@ class IPTVApp(MDApp):
         logging.root.addHandler(handler)
         logging.root.setLevel(logging.DEBUG)
 
-    # class LogStream:
-    #     """Capture stdout/stderr and redirect to our label."""
-    #     def __init__(self, label, original):
-    #         self.label = label
-    #         self.original = original
-            
-    #     def write(self, text):
-    #         self.original.write(text)
-    #         if text.strip():
-    #             Clock.schedule_once(lambda dt: self.update_label(text))
-                
-    #     def update_label(self, text):
-    #         self.label.text += text
-    #         with open("iptv.log", "a") as f:
-    #             f.write(text)
-                
-    #     def flush(self):
-    #         self.original.flush()
 
     def jump_to_chanel(self, channel_no:int):
         # print(instance.parent.children[1].text)
@@ -943,53 +947,8 @@ class IPTVApp(MDApp):
                 print("Jump to channel:", self.chanel_no , _[-1])
             # self.video.state = 'stop'
 
-
-        # print("Jump to channel:", self.chanel_no)
-
-    # def stop_video(self, instance):
-    #     if self.video.state == 'play':
-    #         self.video.state = 'stop'
-    #     elif self.video.state == 'stop':
-    #         self.video.state = 'play'
-        
-    # def switch_stream(self, *args):
-    #     # Pick a random stream
-    #     self.current_stream = random.choice(self.streams)
-    #     self.video.state = 'stop'
-    #     self.video.source = self.current_stream[3]
-    #     self.video.state = 'play'
-    #     Logger.info(f"IPTV: Switching to channel {self.current_stream[1]} ({self.current_stream[3]})")
-    #     print("switch_stream")
-
-    # def on_video_state_change(self, instance, value):
-    #     if value == 'play':
-    #         Logger.info(f"IPTV: Stream is playing: {self.current_stream[1]}")
-    #     elif value == 'stop':
-    #         Logger.info(f"IPTV: Stream stopped: {self.current_stream[1]}")
-    #     elif value == 'error':
-    #         Logger.error(f"IPTV: Stream failed: {self.current_stream[1]}")
-    #         self.switch_stream()  # Automatically switch to the next stream
-    #     else:
-    #         Logger.info(f"IPTV: Stream state changed: {value}")
      
-    def switch_stream(self, instance): ...
-        # Change to a new m3u8 URL
-        # new_source = ""
-        # self.video.state = 'stop'
-        # self.video.source = new_source[-1]
-        # self.video.state = 'play'
-        # print('chanel no: ' ,new_source[0])
-        # print('chanel name: ' ,new_source[1])
-        # self.title = new_source[2]
-        # # set channel no.
-        # self.channel_info_label.text = f"Now watching {new_source[0]}: {new_source[1]}"
-
-        # # self.video.state = 'stop'
-        # # self.video.source = self.current_stream[3]
-        # # self.video.state = 'play'
-        # Logger.info(f"IPTV: Switching to channel {new_source[2]} ({new_source[0]})")
-        # # self.update_log("log update")
-        # print("switch_stream")
+    
         
     
 app_ = IPTVApp()

@@ -419,7 +419,8 @@ print(
 	# get_all_groups()
 	# get_channel_count()
 	# get_channel_by_group(2),
-	find_channel_group_by_channel_id(5416),
+	get_channel_by_id(85),
+	# find_channel_group_by_channel_id(5416),
 	# get_all_groups()
 	# [chanel for i ,(id , chanel) in enumerate(get_favourites())]
 	# get_favourites(),
