@@ -2,10 +2,10 @@
 env/
 __pycache__/
 *.m3u8
-*.m3u
 *.log
 *.db
 .vscode/
 archive/
 test.py
 test_.py
+tests/
