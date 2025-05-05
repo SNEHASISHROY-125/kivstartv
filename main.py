@@ -402,7 +402,7 @@ class IPTVApp(MDApp):
             preview="icon.png",
             volume=self.volume, 
         )
-        
+        self.icon = "icon.png"  # Set the Kivy application icon  # Set the application icon
         layout = BoxLayout(orientation='vertical')
         layout.add_widget(self.video)
         

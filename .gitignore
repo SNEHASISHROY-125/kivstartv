@@ -9,3 +9,6 @@ archive/
 test.py
 test_.py
 tests/
+/build
+/dist
+qr.png
