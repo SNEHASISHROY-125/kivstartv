@@ -1,2 +1,5 @@
 ffpyplayer
 qrcode
+fastapi
+uvicorn
+python-multipart
