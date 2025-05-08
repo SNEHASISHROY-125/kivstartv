@@ -7,7 +7,7 @@ import subprocess , requests , os , time ,qrcode
 os.environ['KIVY_WINDOW'] = 'sdl2'
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 from kivy.config import Config
-Config.set('graphics', 'fullscreen', '0')  # or '1' for true fullscreen
+Config.set('graphics', 'fullscreen', '1')  # or '1' for true fullscreen
 Config.set('graphics', 'borderless', '1')
 
 
