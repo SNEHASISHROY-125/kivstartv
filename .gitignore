@@ -5,7 +5,7 @@ __pycache__/
 *.log
 *.db
 .vscode/
-archive/
+_archive/
 test.py
 test_.py
 tests/

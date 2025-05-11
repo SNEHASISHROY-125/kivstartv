@@ -77,7 +77,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
-    name='kivstarTV_V1.7.1',
+    name='kivstarTV_V1.7.5',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
