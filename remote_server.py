@@ -52,9 +52,12 @@ class RemoteSocketServer(threading.Thread):
 			self.callback_handler("9")
 		elif command == "0":
 			self.callback_handler("0")
-		elif command == "power": ...
-		elif command == "-/": ...
-		elif command == "+/": ...
+		elif command == "power": 
+			self.callback_handler("power")
+		elif command == "-/": 
+			self.callback_handler("min_volume")
+		elif command == "+/": 
+			self.callback_handler("max_volume")
 		# send client tv details
 		elif command == "tv_name":
 			# send the tv name to the client

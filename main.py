@@ -3,12 +3,50 @@
 IPTV Player
 """
 
-import subprocess , requests , os , time ,qrcode
+import subprocess , requests , os , sys , shutil , time ,qrcode
 os.environ['KIVY_WINDOW'] = 'sdl2'
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 from kivy.config import Config
 Config.set('graphics', 'fullscreen', '1')  # or '1' for true fullscreen
 Config.set('graphics', 'borderless', '1')
+
+if sys.platform != "win32":
+    # For Linux/macOS: use ~/.local/share or just ~/
+    app_data = os.path.join(os.path.expanduser("~"), ".local", "share", "KivstarTV")
+else:
+    app_data = os.path.join(os.getenv("LOCALAPPDATA") or os.path.expanduser("~"), "KivstarTV")
+
+os.makedirs(app_data, exist_ok=True)
+# check if data file exists
+if not os.path.exists(os.path.join(app_data, "archive")): os.makedirs(os.path.join(app_data, "archive"), exist_ok=True)
+
+# setting some .conf | for windows
+import configparser
+
+config = configparser.ConfigParser()
+config.read('app.conf')
+# copy to the local app data directory
+if not os.path.exists(conf:=os.path.join(app_data, "app.conf")):
+    shutil.copyfile('app.conf', conf)
+
+# if paths match then skip 
+if config['app']['channels_db_path'] == 'sources/channels.db': 
+    # update channels_db_path
+    config['app']['channels_db_path'] = os.path.join(app_data, "channels.db")
+    with open(conf, 'w') as configfile:
+        config.write(configfile)
+
+if config['update']['archive_path'] == 'archive/':
+    # update archive directory
+    config['update']['archive_path'] = os.path.join(app_data, "archive")
+    with open(conf, 'w') as configfile:
+        config.write(configfile)
+
+if config['update']['update_db_path'] == 'sources/update.db':
+    # update update_db_path
+    config['update']['update_db_path'] = os.path.join(app_data, "update.db")
+    with open(conf, 'w') as configfile:
+        config.write(configfile)
 
 
 from io import StringIO
@@ -83,6 +121,18 @@ FloatLayout:
         size_hint: 0.7, 0.1
         pos_hint: {'center_x': 0.5, 'center_y': 0.2}
         # opacity: 0 if app.update_done==100 else 1
+
+    MDLabel:
+        id : poweroff_label
+        text: "TV will shut down in 5 seconds" 
+        halign: "center"
+        font_size: sp(17)
+        bold: True
+        theme_text_color: "Custom"
+        text_color: 0.7, 0.5, 0, 0.7
+        size_hint: 0.7, 0.1
+        pos_hint: {'center_x': 0.5, 'center_y': 0.6}
+        opacity: 1 if app.poweroff else 0
 
 
     MDCard:
@@ -384,6 +434,8 @@ class IPTVApp(MDApp):
     known_gernes[0] = "Favourites"
 
     volume = NumericProperty(0.5)        # default stream volume
+    poweroff = BooleanProperty(False)  # poweroff state
+    exit_event = None  # exit event
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -392,7 +444,7 @@ class IPTVApp(MDApp):
         Window.bind(on_key_down=self.on_key_down)
 
     def build(self):
-        self.m3u8_source = "https://linear-11.frequency.stream/dist/glewedtv/11/hls/master/playlist.m3u8"
+        self.m3u8_source = "https://linear-11.frequency.stream/dist/glewedtv/11/hls/master/playlist.m3u8" if not cdb.get_channel_by_id(self.chanel_no)[0] else cdb.get_channel_by_id(self.chanel_no)[0][-1]
         self.video = Video(
             source=self.m3u8_source, 
             state='play',
@@ -522,8 +574,9 @@ class IPTVApp(MDApp):
     
     def get_qr(self,content:str):
         qr = qrcode.make(content)
-        qr.save("qr.png")
-        return "qr.png"
+        path = os.path.join(app_data, "qr.png")
+        qr.save(path)
+        return path
 
     @mainthread
     def dismiss_modal(self): self.modal.dismiss() if hasattr(self , "modal") else None
@@ -555,6 +608,27 @@ class IPTVApp(MDApp):
             hide_update_label()
         #
         threading.Thread(target=update,daemon=True).start()
+
+    # Poweroff/Exit
+    def exit_application(self):
+        if self.poweroff:
+            """Properly exit the application"""
+            print("[App] Shutting down...")
+            
+            # Clean up resources
+            self.video.state = 'stop'
+            self.video.unload()
+            
+            # Close remote connections
+            if hasattr(self, 'remote_thread_closure_callback') and self.remote_thread_closure_callback:
+                self.remote_thread_closure_callback()
+            
+            # Close manager server
+            if hasattr(self, 'manager_thread_closure_callback') and self.manager_thread_closure_callback:
+                self.manager_thread_closure_callback()
+            
+            # Stop the app
+            self.stop()
 
     def on_key_down(self, window, keycode, scancode, codepoint, modifiers):
             """
@@ -635,7 +709,7 @@ class IPTVApp(MDApp):
                         self.jump_to_chanel(self.chanel_no)
                         self.channel_info_label.text = str(self.chanel_no)
                         # update time
-                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M"))
                         # check fav
                         if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
                             self.is_channel_no_favourite = True
@@ -646,7 +720,7 @@ class IPTVApp(MDApp):
                         self.jump_to_chanel(self.chanel_no)
                         self.channel_info_label.text = str(self.chanel_no)
                         # update time
-                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                        self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M"))
                         # check fav
                         if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
                             self.is_channel_no_favourite = True
@@ -772,38 +846,35 @@ class IPTVApp(MDApp):
                     self.jump_to_chanel(self.chanel_no)
                     self.channel_info_label.text = str(self.chanel_no)
                     # update time
-                    self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                    self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M"))
                     # check fav
                     if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
                         self.is_channel_no_favourite = True
                     else: 
                         self.is_channel_no_favourite = False
+                    # show the channel info label
+                    # make volume label visible
+                    [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
                 else: # right arrow  →
                     self.chanel_no = min(self.chanel_no + 1, self.max_chanel_no)
                     self.jump_to_chanel(self.chanel_no)
                     self.channel_info_label.text = str(self.chanel_no)
                     # update time
-                    self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M:%S"))
+                    self.info.ids.info_time.text = str(datetime.datetime.now().strftime("%H:%M"))
                     # check fav
                     if self.chanel_no in [chanel for i ,(id , chanel) in enumerate(cdb.get_favourites())] :
                         self.is_channel_no_favourite = True
                     else:
                         self.is_channel_no_favourite = False
+                    # show the channel info label
+                    # make volume label visible
+                    [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
             # menu mode ON
             else:
                 if keycode == "back": # left arrow ←
                     self.switch_gerne(0)
                 else: # right arrow  →
                     self.switch_gerne(1)
-        
-        # elif codepoint == "d":  # a
-        #     self.switch_gerne(1)
-        # elif codepoint == "a":
-        #     self.switch_gerne(0)
-        # elif codepoint == 'w':
-        #     self.move_selection(-1)
-        # elif codepoint == 's':
-        #     self.move_selection(1)
         # menu mode
         elif keycode == 'menu':
             # toggle menu mode
@@ -825,9 +896,33 @@ class IPTVApp(MDApp):
                 self.mark_channel_favourite()
                 # release the seamphore
                 Clock.schedule_once(lambda dt: setattr(self,"seamphore_release" , True) , 0)
-
+        # +/ and -/ max/min volume
+        elif keycode == 'max_volume':
+            if self.volume < 1.0:
+                self.volume = 1.0
+                Clock.schedule_once(lambda dt : setattr(self.video, "volume" , self.volume), 0)
+            else: 
+                self.volume = 0.5
+                Clock.schedule_once(lambda dt : setattr(self.video, "volume" , self.volume), 0)
+        elif keycode == 'min_volume':
+            if self.volume > 0.0:
+                self.volume = 0.0
+                Clock.schedule_once(lambda dt : setattr(self.video, "volume" , self.volume), 0)
+            else:
+                self.volume = 0.5
+                Clock.schedule_once(lambda dt : setattr(self.video, "volume" , self.volume), 0)
+        # power off
+        elif keycode == 'power': 
+            self.poweroff = not self.poweroff
+            if self.poweroff:
+                # show the power off label
+                # [setattr(widget,"opacity", 1) for widget in self.widgets_to_hide.values()]
+                # exit the application
+                self.exit_event = Clock.schedule_once(lambda dt: self.exit_application() , 5)
+            else: self.exit_event.cancel() if self.exit_event else None
+            
     
-    def get_time(self): return datetime.datetime.now().strftime("%H:%M:%S")
+    def get_time(self): return datetime.datetime.now().strftime("%H:%M")
     def get_gerne_icon(self , g: str):
         _ = [
             key for i , (key , gerne) in enumerate(self.known_gernes.items()) if gerne.strip() == g

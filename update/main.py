@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
-import requests , os , json , datetime 
+import requests , os , sys , json , datetime 
 import re , sqlite3 ,configparser
 from urllib.parse import unquote
 import create_db as cdb
 
+if sys.platform != "win32":
+    # For Linux/macOS: use ~/.local/share or just ~/
+    app_data = os.path.join(os.path.expanduser("~"), ".local", "share", "KivstarTV")
+else:
+    app_data = os.path.join(os.getenv("LOCALAPPDATA") or os.path.expanduser("~"), "KivstarTV")
+
+
 # app .conf
 config = configparser.ConfigParser()
-config.read('app.conf')
+config.read(os.path.join(app_data, 'app.conf'))
 
 update_db = config['update']['update_db_path']
 update_source = config['update']['update_source']

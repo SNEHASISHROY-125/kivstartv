@@ -1,8 +1,15 @@
-import sqlite3 , configparser
+import sqlite3 , configparser , os , sys
+
+if sys.platform != "win32":
+    # For Linux/macOS: use ~/.local/share or just ~/
+    app_data = os.path.join(os.path.expanduser("~"), ".local", "share", "KivstarTV")
+else:
+    app_data = os.path.join(os.getenv("LOCALAPPDATA") or os.path.expanduser("~"), "KivstarTV")
+
 
 # app .conf
 config = configparser.ConfigParser()
-config.read('app.conf')
+config.read(os.path.join(app_data,'app.conf'))
 
 # db_path = config['database']['path']
 DB = config['app']['channels_db_path']

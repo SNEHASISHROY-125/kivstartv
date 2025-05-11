@@ -8,6 +8,7 @@ from urllib.parse import unquote
 import sqlite3,configparser
 import os,json,uvicorn,re
 from typing import List
+import os , sys
 
 app = FastAPI()
 
@@ -20,9 +21,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if sys.platform != "win32":
+    # For Linux/macOS: use ~/.local/share or just ~/
+    app_data = os.path.join(os.path.expanduser("~"), ".local", "share", "KivstarTV")
+else:
+    app_data = os.path.join(os.getenv("LOCALAPPDATA") or os.path.expanduser("~"), "KivstarTV")
+
 # app .conf
 config = configparser.ConfigParser()
-config.read('app.conf')
+config.read(os.path.join(app_data,'app.conf'))
 # DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'iptv_channels.db'))
 DB_PATH = config['app']['channels_db_path']
 
