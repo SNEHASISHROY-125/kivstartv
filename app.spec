@@ -1,20 +1,47 @@
 # -*- mode: python ; coding: utf-8 -*-
-import kivy , kivymd , sqlite3 , requests , qrcode , fastapi ,uvicorn
-from kivy_deps import sdl2, glew
-from kivymd import hooks_path as kivymd_hooks_path
+import kivy, kivymd, sqlite3, requests, qrcode, fastapi, uvicorn 
 
-# Guide's : Pyinstaller [for .exe] & InnoSetup [for installer]
-# https://www.youtube.com/watch?v=p3tSLatmGvU
-
-# Add importlib-metadata for python-multipart if needed
+# Import standard modules
 import importlib.util
 import os
 import site
 
-# Add this near the top, after imports
-runtime_hook_path = os.path.abspath(os.path.join(os.getcwd(), "redirect_output.py"))
+from PyInstaller.utils.hooks import collect_all
 
-# Find and add python_multipart, multipart, and ffpyplayer package folders
+# Collect all necessary files for sqlite3
+sqlite3_datas, sqlite3_binaries, sqlite3_hiddenimports = collect_all('sqlite3')
+configparser_datas, configparser_binaries, configparser_hiddenimports = collect_all('configparser')
+
+
+# Function to create runtime hook if needed
+def create_runtime_hook():
+    runtime_hook_path = os.path.abspath(os.path.join(os.getcwd(), "redirect_output.py"))
+    if not os.path.exists(runtime_hook_path):
+        with open(runtime_hook_path, 'w') as f:
+            f.write('''
+		# redirect_output.py - Runtime hook for PyInstaller
+		import os
+		import sys
+
+		# Redirect stdout and stderr to log files in the application directory
+		if hasattr(sys, '_MEIPASS'):
+			log_dir = os.path.join(os.path.dirname(sys.executable), 'logs')
+			if not os.path.exists(log_dir):
+				try:
+					os.makedirs(log_dir)
+				except:
+					pass
+			try:
+				sys.stdout = open(os.path.join(log_dir, 'stdout.log'), 'w')
+				sys.stderr = open(os.path.join(log_dir, 'stderr.log'), 'w')
+			except:
+				pass
+	''')
+    return runtime_hook_path
+
+runtime_hook_path = create_runtime_hook()
+
+# Find and add package paths
 def get_package_path(pkg_name):
     spec = importlib.util.find_spec(pkg_name)
     if spec and spec.submodule_search_locations:
@@ -38,15 +65,22 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('./archive', './archive'),
+        ('./kv', './kv'),
         ('./src', './src'),
         ('./sources', './sources'),
         ('./icon.png', './'),
-        ('./', './'),
+		('./app.conf', './'),
+		('./create_db.py', './'),
+		('./manager.py', './'),
+		('./remote_server.py', './'),
+		('./update/main.py', './update/main.py'),
+		('./redirect_output.py', './'),
+		*sqlite3_datas,  # Add SQLite3 data files
+        *configparser_datas,
         *extra_datas,
     ],
     hiddenimports=[
-        kivymd_hooks_path, 
+        'kivymd.tools.packaging.pyinstaller',  # Fixed: Using module name instead of path
         'ffmpeg',
         'ffpyplayer',
         'ffpyplayer.player',
@@ -62,10 +96,23 @@ a = Analysis(
         'qrcode',
         'multipart', 
         'python_multipart',
+        # Adding common Kivy modules that might be needed
+        'kivy.core.window.window_sdl2',
+        'kivy.core.text',
+        'kivy.core.text.text_sdl2',
+        'kivy.core.text.markup',
+        'kivy.core.audio',
+        'kivy.core.camera',
+        'kivy.core.clipboard',
+        'kivy.core.image',
+        'kivy.core.spelling',
+        'kivy.core.video',
+        'kivy.core.video.video_ffmpeg',
+        'kivy.graphics.tesselator',
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[runtime_hook_path],  # <-- Add this line
+    runtime_hooks=[runtime_hook_path],
     excludes=[],
     noarchive=False,
 )
@@ -74,21 +121,30 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
-    *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
-    name='kivstarTV_V1.7.5',
+    [],
+    exclude_binaries=True,
+    name='kivstarTV',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,  # Set to True temporarily for debugging
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon='./icon.ico'
+    icon='./icon.png'
+)
+
+# Use COLLECT to gather all dependencies in a directory
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='kivstarTV',
 )
