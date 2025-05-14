@@ -331,9 +331,7 @@ class CustomRecycleView(RecycleView):
             for i, (no, domain, name, icon, gerne ,url) in enumerate(cdb.get_favourite_channels()) if no
         ] # 0 - favourites
 
-        # print("data : " , self.data , self.group_id)
-        # if not self.data: print(cdb.get_channel_by_group(self.group_id))
-
+    ## during an update ongoing we if we do CRUD : sqlite3.OperationalError: database is locked
 
     def jump_to_index(self, index):
         try: self.scroll_y = 1 - (index / (len(self.data) - 1))  # index/number of widgets
