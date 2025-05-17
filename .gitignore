@@ -13,3 +13,6 @@ tests/
 /dist
 qr.png
 *.exe
+remote/net.py
+remote/scanner.py
+ve/
