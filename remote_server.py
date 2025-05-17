@@ -67,7 +67,16 @@ class RemoteSocketServer(threading.Thread):
 
 	def run(self):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-			hostname = socket.gethostbyname(socket.gethostname())
+			# hostname = socket.gethostbyname(socket.gethostname())
+			# ...existing code...
+			with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+				try:
+					# doesn't have to be reachable
+					s.connect(('8.8.8.8', 80))
+					hostname = s.getsockname()[0]
+				except Exception:
+					hostname = '127.0.0.1'
+			# ...existing code...
 			print(f"[SocketServer] Hostname: {hostname}")
 			# set the IP address to the app.local_ip
 			self.set_ip(hostname)

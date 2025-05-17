@@ -268,12 +268,14 @@ MDCard:
     padding: dp(10)
     pos_hint: {'top': 0.7, 'center_x': 0.5}
     md_bg_color: 0.7, 1, 0, 0.7
+    on_parent: app.ip_image_object = self
     MDBoxLayout:
         orientation: "vertical"
         spacing: dp(10)
         radius: dp(20)
         AsyncImage:
-            source: app.get_qr(qr_card.ip)
+            id: qr_image
+            source: "icon.png" 
             allow_stretch: True
             keep_ratio: True
             pos_hint: {'center_y': 0.5}
@@ -350,6 +352,7 @@ class IPTVApp(MDApp):
     remote_thread_closure_callback = None
     remote_connected_to = StringProperty("")
     local_ip = StringProperty("0.0.0.0")
+    ip_image_object = None
     # updates (0 - 100)%
     update_done = NumericProperty(0)
     update_label = None
@@ -582,7 +585,9 @@ class IPTVApp(MDApp):
 
     @mainthread
     def set_local_ip(self, ip:str):
-        Clock.schedule_once(lambda dt: setattr(self,"local_ip" , ip) , 0.5)
+        # print("setting local ip: ", ip , self.ip_image_object)
+        Clock.schedule_once(lambda dt: setattr(self,"local_ip" , ip) , 0.2)
+        Clock.schedule_once(lambda dt: setattr(self.ip_image_object.ids.qr_image,"source" , self.get_qr(ip)) , 0.5)
 
     def check_update(self):
         @mainthread
