@@ -2,20 +2,23 @@
 
 # Set the repo URL and app folder name
 REPO_URL="https://github.com/SNEHASISHROY-125/kivstartv.git"
-APP_DIR="kivstartv"
+APP_DIR="/opt/kivstartv"
 
 # system dependencies
 sudo apt-get update
 sudo apt-get install -y python3 python3-pip git
 sudo apt install python3-venv
 
-# Clone the repo if it doesn't exist
+# Check if the directory exists, if not create it
 if [ ! -d "$APP_DIR" ]; then
+    echo "Creating directory $APP_DIR"
+    sudo mkdir -p "$APP_DIR"
+    # Clone the repository
     echo "Cloning repository..."
     git clone "$REPO_URL"
 fi
 
-cd "$APP_DIR" || exit
+cd "kivstartv" || exit
 
 # switch to linux branch
 git checkout linux
