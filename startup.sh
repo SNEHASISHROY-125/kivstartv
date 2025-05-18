@@ -15,9 +15,10 @@ if [ ! -d "$APP_DIR" ]; then
     sudo mkdir -p "$APP_DIR"
     # Clone the repository
     echo "Cloning repository..."
-    git clone "$REPO_URL"
+    # git clone "$REPO_URL"
 fi
 
+cd $APP_DIR || exit
 cd "kivstartv" || exit
 
 # switch to linux branch

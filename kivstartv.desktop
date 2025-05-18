@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Exec=/bin/bash $HOME/startup.sh
+Exec=/bin/bash /opt/kivstartv/startup.sh
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
