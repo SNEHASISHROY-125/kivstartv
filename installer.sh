@@ -10,7 +10,7 @@ if [ ! -d "$APPDIR" ]; then
     sudo mkdir -p $APPDIR
 fi
 
-if [ ! -d "$HOME/.local/share/applications" ]; then/opt/kivstartv/startup.sh
+if [ ! -d "$HOME/.local/share/applications" ]; then
     echo "Creating directory $HOME/.local/share/applications"
     mkdir -p "$HOME/.local/share/applications"
 fi
@@ -41,15 +41,19 @@ sudo apt-get install -y python3 python3-pip git
 sudo apt install python3-venv
 
 # Check if the directory exists, if not create it
-if [ ! -d "$APP_DIR" ]; then
-    echo "Creating directory $APP_DIR"
-    sudo mkdir -p "$APP_DIR"
-    cd "$APP_DIR" || exit
-    # Clone the repository
-    echo "Cloning repository..."
-    git clone "$REPO_URL"
-fi
+# if [ ! -d "$APP_DIR" ]; then
+#     echo "Creating directory $APP_DIR"
+#     sudo mkdir -p "$APP_DIR"
+#     cd "$APP_DIR" || exit
+#     # Clone the repository
+#     echo "Cloning repository..."
+#     git clone "$REPO_URL"
+# fi
 
+cd "$APP_DIR" || exit
+# Clone the repository
+echo "Cloning repository..."
+git clone "$REPO_URL"
 cd "kivstartv" || exit
 
 # switch to linux branch
@@ -63,6 +67,7 @@ if [ ! -d "venv" ]; then
 fi
 
 # Activate the virtual environment
+echo "Activating virtual environment..."
 source venv/bin/activate
 
 # Install dependencies

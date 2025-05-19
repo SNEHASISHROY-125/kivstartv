@@ -573,8 +573,11 @@ class IPTVApp(MDApp):
     
     def get_qr(self,content:str):
         qr = qrcode.make(content)
-        qr.save("qr.png")
-        return "qr.png"
+
+        qr.save(
+            _:=os.path.join(app_data,"qr.png")
+        )
+        return _
 
     @mainthread
     def dismiss_modal(self): self.modal.dismiss() if hasattr(self , "modal") else None
