@@ -1,16 +1,16 @@
 [app]
 
 # (str) Title of your application
-title = kivtv remote
+title = kivstartv remote
 
 # (str) Package name
-package.name = kivtvremote
+package.name = kivstartvremote
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = io.github.kivtvremote
+package.domain = com.github.snehasishroy125
 
 # (str) Source code where the main.py live
-source.dir = ./kivtv/remote/
+source.dir = ./
 
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas
@@ -29,7 +29,7 @@ source.include_exts = py,png,jpg,kv,atlas
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.0.3
+version = 0.0.7
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -37,7 +37,17 @@ version = 0.0.3
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd
+requirements =
+    android,
+    hostpython3,
+    Kivy==2.3.1,
+    kivymd,
+    libiconv,
+    libzbar,
+    Pillow==8.4.0,
+    python3,
+    pyzbar==0.1.8,
+    pyjnius
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -67,7 +77,7 @@ author = © Copyright 2025 Snehasish Roy & all other contributers
 osx.python_version = 3
 
 # Kivy version to use
-osx.kivy_version = 1.9.1
+osx.kivy_version = 2.3.1
 
 #
 # Android specific
@@ -95,7 +105,7 @@ fullscreen = 1
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions/#build-options-1 for all the supported syntaxes and properties)
-android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
+android.permissions = android.permission.INTERNET, CAMERA , WAKE_LOCK , WRITE_EXTERNAL_STORAGE
 
 
 # (list) features (adds uses-feature -tags to manifest)
@@ -111,10 +121,10 @@ android.minapi = 21
 #android.sdk = 20
 
 # (str) Android NDK version to use
-#android.ndk = 23b
+android.ndk = 25b
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
-#android.ndk_api = 21
+android.ndk_api = 21
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 #android.private_storage = True
@@ -137,7 +147,7 @@ android.minapi = 21
 # agreements. This is intended for automation only. If set to False,
 # the default, you will be shown the license when first running
 # buildozer.
-# android.accept_sdk_license = False
+android.accept_sdk_license = True
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.kivy.android.PythonActivity
@@ -178,7 +188,7 @@ android.minapi = 21
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-#android.add_src =
+android.add_src = lbarcam/PreviewView.java
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -258,7 +268,7 @@ android.minapi = 21
 
 # (bool) Indicate whether the screen should stay on
 # Don't forget to add the WAKE_LOCK permission if you set this to True
-#android.wakelock = False
+android.wakelock = True
 
 # (list) Android application meta-data to set (key=value format)
 #android.meta_data =
@@ -284,7 +294,7 @@ android.minapi = 21
 
 # (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 # In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
-android.archs = arm64-v8a, armeabi-v7a
+android.archs = armeabi-v7a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
@@ -322,7 +332,7 @@ android.allow_backup = True
 #p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-#p4a.branch = master
+p4a.branch = v2024.01.21
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
