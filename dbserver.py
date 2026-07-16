@@ -145,7 +145,6 @@ def start_tcp_server(_ethods , unix_socket_path , server_coroutine):
     async def main(ethods , unixSocket , coroutine_server):
         global _methods
         _methods = dict(ethods)
-        # print(_methods)
         # DEBUG
         # server = await asyncio.start_server(handle_client, "0.0.0.0", 9090)
         server = await asyncio.start_unix_server(handle_client, make_unix_socket(unixSocket))
