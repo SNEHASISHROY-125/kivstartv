@@ -17,3 +17,8 @@ qr.png
 *.exe
 remote/net.py
 remote/scanner.py
+.env
+cache/
+releases/*.zip
+sources/*.m3u
+sources/*.json
